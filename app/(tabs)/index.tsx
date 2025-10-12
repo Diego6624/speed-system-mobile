@@ -34,12 +34,17 @@ export default function IndexScreen() {
 
           setSpeed(Number(speedKmH.toFixed(1)));
 
+          // Condiciones
+          
+          // Condicion limite de velocidad
           if (speedKmH > limit) {
             Alert.alert(
               "⚠️ Exceso de velocidad",
               `Tu velocidad actual es ${speedKmH.toFixed(1)} km/h`
             );
           }
+
+
         }
       );
 
@@ -78,7 +83,7 @@ export default function IndexScreen() {
       </MapView>
 
       <View style={styles.infoBox}>
-        <Text style={styles.title}>Speed System Mobile</Text>
+        <Text style={styles.title}>Contador de velocidad</Text>
         <Text style={styles.speed}>{speed} km/h</Text>
         <Text style={styles.limit}>Límite: {limit} km/h</Text>
       </View>
@@ -87,11 +92,11 @@ export default function IndexScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  map: { width: Dimensions.get("window").width, height: Dimensions.get("window").height },
+  container: { flex: 1, paddingTop: 43, backgroundColor: "#181818ff" },
+  map: { width: Dimensions.get("window").width, height: Dimensions.get("window").height},
   infoBox: {
     position: "absolute",
-    top: 50,
+    top: 56,
     alignSelf: "center",
     backgroundColor: "rgba(255,255,255,0.9)",
     padding: 15,
