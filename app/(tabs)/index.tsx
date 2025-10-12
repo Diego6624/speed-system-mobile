@@ -1,98 +1,104 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from "react";
+import { View, Text, Alert, StyleSheet, Dimensions } from "react-native";
+import * as Location from "expo-location";
+import MapView, { Marker } from "react-native-maps";
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+export default function IndexScreen() {
+  const [location, setLocation] = useState<any>(null);
+  const [speed, setSpeed] = useState(0);
+  const [limit, setLimit] = useState(60);
 
-export default function HomeScreen() {
+  useEffect(() => {
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permiso denegado", "Activa la ubicación para continuar");
+        return;
+      }
+
+      await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.BestForNavigation,
+          timeInterval: 500, // cada 0.5 segundos
+          distanceInterval: 2, // solo si se movió al menos 2 metros
+        },
+        (loc) => {
+          // ✅ Guarda la ubicación actual
+          setLocation(loc.coords);
+
+          const speedMs = loc.coords.speed ?? 0;
+          let speedKmH = speedMs * 3.6;
+
+          // 🔧 Corrige valores falsos (si el GPS salta)
+          if (speedKmH < 0 || speedKmH > 150) speedKmH = 0;
+
+          setSpeed(Number(speedKmH.toFixed(1)));
+
+          if (speedKmH > limit) {
+            Alert.alert(
+              "⚠️ Exceso de velocidad",
+              `Tu velocidad actual es ${speedKmH.toFixed(1)} km/h`
+            );
+          }
+        }
+      );
+
+    })();
+  }, []);
+
+  if (!location) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.title}>Cargando ubicación...</Text>
+      </View>
+    );
+  }
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
+    <View style={styles.container}>
+      <MapView
+        style={styles.map}
+        region={{
+          latitude: location.latitude,
+          longitude: location.longitude,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        }}
+        showsUserLocation={true}
+        followsUserLocation={true}
+      >
+        <Marker
+          coordinate={{
+            latitude: location.latitude,
+            longitude: location.longitude,
+          }}
+          title="Tu ubicación"
+          description={`Velocidad: ${speed} km/h`}
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+      </MapView>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      <View style={styles.infoBox}>
+        <Text style={styles.title}>Speed System Mobile</Text>
+        <Text style={styles.speed}>{speed} km/h</Text>
+        <Text style={styles.limit}>Límite: {limit} km/h</Text>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: { flex: 1 },
+  map: { width: Dimensions.get("window").width, height: Dimensions.get("window").height },
+  infoBox: {
+    position: "absolute",
+    top: 50,
+    alignSelf: "center",
+    backgroundColor: "rgba(255,255,255,0.9)",
+    padding: 15,
+    borderRadius: 15,
+    alignItems: "center",
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
+  title: { fontSize: 20, fontWeight: "bold" },
+  speed: { fontSize: 40, color: "red", fontWeight: "bold" },
+  limit: { fontSize: 18, color: "gray" },
 });
