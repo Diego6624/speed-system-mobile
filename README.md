@@ -1,50 +1,128 @@
-# Welcome to your Expo app 👋
+# 📱 Speed System Mobile
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Aplicación móvil desarrollada en **React Native (Expo)** que calcula la **velocidad de desplazamiento del usuario** usando el **GPS y el giroscopio** del dispositivo.  
+Incluye **alertas visuales y de voz** cuando se supera el límite de velocidad establecido.
 
-## Get started
+---
 
-1. Install dependencies
+## 🚀 Funcionalidades principales
+- Muestra la **velocidad actual** del usuario en tiempo real (km/h).
+- Alerta con **voz y notificación** si se supera el límite de velocidad.
+- Usa **mapa en vivo** con ubicación actual.
+- Sistema de **control por voz** con intervalos configurables.
+- Lógica estable y anti-bucle para lecturas del GPS.
 
-   ```bash
-   npm install
-   ```
+---
 
-2. Start the app
+## 🧩 Tecnologías utilizadas
 
-   ```bash
-   npx expo start
-   ```
+| Tecnología | Uso principal |
+|-------------|----------------|
+| **React Native (Expo)** | Framework principal para desarrollo móvil |
+| **Expo Location** | Acceso a ubicación y velocidad del dispositivo |
+| **Expo Speech** | Generación de notificaciones por voz |
+| **React Native Maps** | Renderizado del mapa en tiempo real |
+| **TypeScript / JavaScript** | Lógica de la app |
 
-In the output, you'll find options to open the app in a
+---
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## ⚙️ Requisitos previos
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+Antes de ejecutar el proyecto, asegúrate de tener instalado:
 
-## Get a fresh project
+### 🧱 Herramientas base
+| Herramienta | Requisito |
+|--------------|-----------|
+| [Node.js](https://nodejs.org/) | v18 o superior |
+| npm | viene con Node.js |
+| [Git](https://git-scm.com/downloads) | para clonar el repositorio |
+| [Expo CLI (local)](https://docs.expo.dev/get-started/installation/) | usar con `npx` |
 
-When you're ready, run:
+### 📱 En tu celular
+1. Instala la app **Expo Go** desde Play Store o App Store.  
+2. Inicia sesión (opcional pero recomendado).  
+3. Conéctate a la **misma red WiFi** que tu computadora.
 
+---
+
+## 🧭 Instalación paso a paso
+
+### 1️⃣ Clonar el proyecto
 ```bash
-npm run reset-project
+git clone https://github.com/<tu-usuario>/speed-system-mobile.git
+cd speed-system-mobile
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### 2️⃣ Instalar dependencias
+```bash
+npm install
+```
 
-## Learn more
+### 3️⃣ Instalar paquetes faltantes manualmente (si fuera necesario)
+```bash
+npx expo install expo-location expo-speech react-native-maps
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+### 4️⃣ Iniciar el proyecto (modo desarrollo)
+```bash
+npx expo start --tunnel
+```
+> Usa `--tunnel` si tus compañeros quieren probarlo desde sus celulares usando datos móviles.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+### 5️⃣ Escanear el código QR
+- Abre **Expo Go** en el teléfono.
+- Escanea el código QR mostrado en consola o en el navegador.
 
-## Join the community
+---
 
-Join our community of developers creating universal apps.
+## 🧠 Ramas del proyecto
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+| Rama | Propósito |
+|-------|------------|
+| `main` | Versión estable lista para entrega |
+| `develop` | Rama de desarrollo (donde se prueban nuevas funciones) |
+| `feature/...` | Ramas individuales por tarea o módulo |
+
+Ejemplo:
+```bash
+git checkout -b feature/voz-notificaciones
+```
+
+---
+
+## 🗂️ Estructura principal del proyecto
+```
+speed-system-mobile/
+│
+├── app/                # Código fuente principal
+│   ├── (tabs)/index.tsx     # Pantalla principal (Mapa + Velocidad)
+│
+├── assets/             # Iconos e imágenes
+├── node_modules/       # Dependencias
+├── package.json        # Configuración de npm y scripts
+├── README.md           # Este archivo
+└── .gitignore          # Archivos ignorados por Git
+```
+
+---
+
+## 🧰 Comandos útiles
+
+| Acción | Comando |
+|--------|----------|
+| Iniciar el proyecto | `npx expo start` |
+| Limpiar caché | `npx expo start -c` |
+| Crear nueva rama | `git checkout -b nombre-de-rama` |
+| Subir cambios a GitHub | `git push origin nombre-de-rama` |
+
+---
+
+## 🛠️ Errores comunes y soluciones
+
+| Problema | Solución |
+|-----------|-----------|
+| `expo-speech` o `expo-location` no instalado | Ejecutar `npx expo install expo-speech expo-location` |
+| No carga la ubicación | Verificar permisos de ubicación en el celular |
+| Error “ngrok tunnel took too long” | Cierra Expo y reintenta `npx expo start --tunnel` |
+| No se escucha la voz | Verifica el volumen multimedia del teléfono |
+| GPS se queda en 0 | Probar al aire libre, el GPS no funciona bien en interiores |
