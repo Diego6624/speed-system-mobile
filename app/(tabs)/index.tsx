@@ -1,12 +1,19 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, Alert, StyleSheet, Dimensions } from "react-native";
 import * as Location from "expo-location";
+import * as Speech from "expo-speech";
+import React, { useEffect, useRef, useState } from "react";
+import { Alert, Dimensions, StyleSheet, Text, View } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 
 export default function IndexScreen() {
   const [location, setLocation] = useState<any>(null);
   const [speed, setSpeed] = useState(0);
-  const [limit, setLimit] = useState(60);
+  const [limit, setLimit] = useState(10); // límite de velocidad
+  const [hasAlerted, setHasAlerted] = useState(false);
+  const [lastAlertTime, setLastAlertTime] = useState(0);
+  const [lastSpokenSpeed, setLastSpokenSpeed] = useState(0);
+  const [lastSpeedVoiceTime, setLastSpeedVoiceTime] = useState(0);
+
+  const isSpeaking = useRef(false);
 
   useEffect(() => {
     (async () => {
@@ -18,36 +25,81 @@ export default function IndexScreen() {
 
       await Location.watchPositionAsync(
         {
-          accuracy: Location.Accuracy.BestForNavigation,
-          timeInterval: 500, // cada 0.5 segundos
-          distanceInterval: 2, // solo si se movió al menos 2 metros
+          accuracy: Location.Accuracy.Highest,
+          timeInterval: 1000,
+          distanceInterval: 0.5,
         },
         (loc) => {
-          // ✅ Guarda la ubicación actual
+          const speedMs = loc.coords.speed ?? 0;
           setLocation(loc.coords);
 
-          const speedMs = loc.coords.speed ?? 0;
           let speedKmH = speedMs * 3.6;
-
-          // 🔧 Corrige valores falsos (si el GPS salta)
           if (speedKmH < 0 || speedKmH > 150) speedKmH = 0;
-
           setSpeed(Number(speedKmH.toFixed(1)));
 
-          // Condiciones
-          
-          // Condicion limite de velocidad
-          if (speedKmH > limit) {
-            Alert.alert(
-              "⚠️ Exceso de velocidad",
-              `Tu velocidad actual es ${speedKmH.toFixed(1)} km/h`
+          const now = Date.now();
+          const tolerance = 1;
+          const diff = Math.abs(speedKmH - lastSpokenSpeed);
+
+          // 🚫 Si la velocidad es muy baja, ignora (ruido del GPS)
+          if (speedKmH < 1.5) return;
+
+          // 🔊 --- Aviso de velocidad actual ---
+          if (
+            diff >= 1 && // solo si cambia ≥5 km/h
+            now - lastSpeedVoiceTime > 8000 && // cada 8 s máx
+            !isSpeaking.current
+          ) {
+            isSpeaking.current = true;
+            Speech.stop();
+            Speech.speak(
+              `Tu velocidad actual es de ${speedKmH.toFixed(0)} kilómetros por hora.`,
+              {
+                language: "es-ES",
+                rate: 0.95,
+              }
             );
+            setTimeout(() => (isSpeaking.current = false), 15000); // evitar que hable más de 15 s
+            setLastSpokenSpeed(speedKmH);
+            setLastSpeedVoiceTime(now);
           }
 
+          // ⚠️ --- Aviso de exceso de velocidad ---
+          if (
+            speedKmH > limit + tolerance &&
+            !hasAlerted &&
+            now - lastAlertTime > 15000 // cada 15 s máx
+          ) {
+            setHasAlerted(true);
+            setLastAlertTime(now);
+
+            if (!isSpeaking.current) {
+              isSpeaking.current = true;
+              Speech.stop();
+              Speech.speak(
+                `Atención. Has superado el límite de velocidad de ${limit} kilómetros por hora.`,
+                { language: "es-ES", rate: 0.95 }
+              );
+              setTimeout(() => (isSpeaking.current = false), 4000);
+            }
+
+            setTimeout(() => {
+              Alert.alert(
+                "⚠️ Exceso de velocidad",
+                `Tu velocidad actual es ${speedKmH.toFixed(1)} km/h`
+              );
+            }, 800);
+          }
+
+          // 🔄 Reset alerta si baja de velocidad
+          setTimeout(() => {
+            if (speedKmH < limit - tolerance && hasAlerted) {
+              setHasAlerted(false);
+            }
+          }, 10000); // después de 10 s
 
         }
       );
-
     })();
   }, []);
 
@@ -69,8 +121,8 @@ export default function IndexScreen() {
           latitudeDelta: 0.01,
           longitudeDelta: 0.01,
         }}
-        showsUserLocation={true}
-        followsUserLocation={true}
+        showsUserLocation
+        followsUserLocation
       >
         <Marker
           coordinate={{
@@ -93,7 +145,10 @@ export default function IndexScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, paddingTop: 43, backgroundColor: "#181818ff" },
-  map: { width: Dimensions.get("window").width, height: Dimensions.get("window").height},
+  map: {
+    width: Dimensions.get("window").width,
+    height: Dimensions.get("window").height,
+  },
   infoBox: {
     position: "absolute",
     top: 56,
