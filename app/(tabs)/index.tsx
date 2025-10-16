@@ -7,7 +7,7 @@ import MapView, { Marker } from "react-native-maps";
 export default function IndexScreen() {
   const [location, setLocation] = useState<any>(null);
   const [speed, setSpeed] = useState(0);
-  const [limit, setLimit] = useState(5);
+  const [limit, setLimit] = useState(40);
   const [lastAlertTime, setLastAlertTime] = useState(0);
   const [lastSpeedVoiceTime, setLastSpeedVoiceTime] = useState(0);
   const [lastSpokenSpeed, setLastSpokenSpeed] = useState(0);
@@ -40,8 +40,8 @@ export default function IndexScreen() {
       await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.Highest,
-          timeInterval: 1000,
-          distanceInterval: 0.5,
+          timeInterval: 1500, // Intervalo de actualización de 1.5 s
+          distanceInterval: 4, // Actualiza cada 4 m
         },
         (loc) => {
           const speedMs = loc.coords.speed ?? 0;
@@ -52,32 +52,27 @@ export default function IndexScreen() {
           setSpeed(Number(speedKmH.toFixed(1)));
 
           const now = Date.now();
-          const tolerance = 0.5; //Tolerancia de 1 km/h (para test: dif -> 0.5)
-          const diff = Math.abs(speedKmH - lastSpokenSpeed);
+          const tolerance = 4; //Tolerancia de 1 km/h (para test: dif -> 0.5)
+          const cooldown = 15000; // cooldown de 15 s (para test: 30000)
 
           // 🚫 Ignorar ruido del GPS
           if (speedKmH < 1.5) return;
 
           // 🔊 Aviso de velocidad cada 15 s o cambio notable y dif de 1 (para test: dif -> 0.5 | lasSpeedVoiceTime -> 10000)
-          if (diff >= 0.5 && now - lastSpeedVoiceTime > 10000 && !isSpeaking.current) {
+          if (now - lastSpeedVoiceTime > 15000 && !isSpeaking.current) {
             speak(`Tu velocidad actual es de ${speedKmH.toFixed(0)} kilómetros por hora.`);
             setLastSpokenSpeed(speedKmH);
             setLastSpeedVoiceTime(now);
           }
 
-          // ⚠️ Aviso de exceso de velocidad — prioridad y cooldown
-          if (speedKmH > limit + tolerance && now - lastAlertTime > 30000) { // cooldown de 15 s (para test: 30000)
+          // ⚠️ Aviso de exceso de velocidad
+          if (speedKmH > limit + tolerance && now - lastAlertTime > cooldown) {
             setLastAlertTime(now);
 
-            // 🔊 Prioridad: interrumpe cualquier voz y da aviso
             speak(`Atención. Has superado el límite de velocidad de ${limit} kilómetros por hora.`, true);
 
-            // ⏱ Muestra alerta visual después de 2.5 s
             setTimeout(() => {
-              Alert.alert(
-                "⚠️ Exceso de velocidad",
-                `Tu velocidad actual es ${speedKmH.toFixed(1)} km/h`
-              );
+              Alert.alert("⚠️ Exceso de velocidad", `Tu velocidad actual es ${speedKmH.toFixed(1)} km/h`);
             }, 2500);
           }
         }
