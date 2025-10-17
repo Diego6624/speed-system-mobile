@@ -1,13 +1,13 @@
-import * as Location from "expo-location";
-import * as Speech from "expo-speech";
+import * as Location from "expo-location"; // 📍 Ubicación
+import * as Speech from "expo-speech"; // 📢 Voz
 import React, { useEffect, useRef, useState } from "react";
 import { Alert, Dimensions, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import MapView, { Marker } from "react-native-maps";
+import MapView, { Marker } from "react-native-maps"; // 🗺 Mapa
 
 export default function IndexScreen() {
   const [location, setLocation] = useState<any>(null);
   const [speed, setSpeed] = useState(0);
-  const [limit, setLimit] = useState(40);
+  const [limit, setLimit] = useState(35);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
 
   const lastAlertTime = useRef(0);
@@ -64,7 +64,7 @@ export default function IndexScreen() {
           if (speedKmH < 2) return;
 
           const now = Date.now();
-          const tolerance = 3; // margen de error
+          const tolerance = 2; // margen de error
           const cooldownVoice = 20000; // 20s entre mensajes de voz
           const cooldownAlert = 30000; // 30s entre alertas visuales
 
