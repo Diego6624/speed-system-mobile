@@ -10,6 +10,6 @@ export default function HistoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingTop: 43, backgroundColor: "#181818ff" },
+  container: { flex: 1, paddingTop: 43},
   txt: { color: "#fff" },
 });
