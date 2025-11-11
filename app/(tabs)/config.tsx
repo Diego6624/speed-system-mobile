@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 export default function ConfigScreen() {
     return(
@@ -10,6 +10,6 @@ export default function ConfigScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingTop: 43, backgroundColor: "#181818ff" },
+  container: { flex: 1, paddingTop: 43},
   txt: { color: "#fff" },
 });

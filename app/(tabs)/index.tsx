@@ -152,7 +152,7 @@ export default function IndexScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingTop: 130, justifyContent: "center", alignItems: "center", backgroundColor: "#181818ff" },
+  container: { flex: 1, paddingTop: 130, justifyContent: "center", alignItems: "center"},
   map: {
     width: Dimensions.get("window").width,
     height: Dimensions.get("window").height,
