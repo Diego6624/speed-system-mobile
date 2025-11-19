@@ -1,3 +1,10 @@
+import { useAuth } from "@/hooks/useAuth";
+import {
+  enviarTracking,
+  finalizarRecorrido,
+  iniciarRecorrido,
+} from "@/services/api";
+import { obtenerLimiteVelocidad } from "@/services/speedLimit";
 import * as Location from "expo-location";
 import * as Speech from "expo-speech";
 import React, { useEffect, useRef, useState } from "react";
@@ -11,14 +18,6 @@ import {
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 
-import {
-  enviarTracking,
-  finalizarRecorrido,
-  iniciarRecorrido,
-} from "@/services/api";
-
-import { obtenerLimiteVelocidad } from "@/services/speedLimit";
-
 export default function IndexScreen() {
   const [location, setLocation] = useState<any>(null);
   const [speed, setSpeed] = useState(0);
@@ -30,16 +29,26 @@ export default function IndexScreen() {
   const lastAlertTime = useRef(0);
   const lastSpeedVoiceTime = useRef(0);
   const isSpeaking = useRef(false);
-
-  const USER_ID = 1;
+  const lastAnnouncedLimit = useRef<number | null>(null);
+  const { user } = useAuth();
+  const USER_ID = user?.id;
 
   // -----------------------------
   // Voz (siempre activa)
   // -----------------------------
-  const speak = (text: string, priority = false) => {
-    if (isSpeaking.current && !priority) return;
-    if (priority) Speech.stop();
+  const LAST_PRIORITY = useRef<0 | 1 | 2>(0);
+  // 2 = alerta, 1 = cambio limite, 0 = velocidad normal
 
+  const speak = (text: string, priority: 0 | 1 | 2 = 0) => {
+    // No interrumpir si algo más importante está hablando
+    if (priority < LAST_PRIORITY.current) return;
+
+    // Si prioridad ALTA, interrumpe todo
+    if (priority === 2) {
+      Speech.stop();
+    }
+
+    LAST_PRIORITY.current = priority;
     isSpeaking.current = true;
 
     Speech.speak(text, {
@@ -47,10 +56,11 @@ export default function IndexScreen() {
       rate: 0.95,
       onDone: () => {
         isSpeaking.current = false;
+        LAST_PRIORITY.current = 0; // vuelve a normal
       },
     });
   };
-
+  
   // -----------------------------
   // Backend: Iniciar / Finalizar recorrido
   // -----------------------------
@@ -88,7 +98,7 @@ export default function IndexScreen() {
   // GPS + Tracking + OSM
   // -----------------------------
   useEffect(() => {
-    
+
     (async () => {
       await iniciarRecorridoBackend();
 
@@ -118,9 +128,17 @@ export default function IndexScreen() {
             loc.coords.longitude
           );
 
-          if (nuevoLimite !== null && nuevoLimite !== limit) {
-            console.log("🔥 ACTUALIZANDO LÍMITE A:", nuevoLimite);
-            setLimit(nuevoLimite);
+          // Limite de velocidad cambiado
+          if (nuevoLimite !== null) {
+            if (lastAnnouncedLimit.current !== nuevoLimite) {
+              console.log("🔥 Cambio REAL de límite detectado:", nuevoLimite);
+
+              lastAnnouncedLimit.current = nuevoLimite; // guardamos el último límite real
+              setLimit(nuevoLimite);
+
+              // Voz (prioridad media)
+              speak(`Nuevo límite de velocidad: ${nuevoLimite} kilómetros por hora.`, 1);
+            }
           }
 
           // Enviar tracking
@@ -141,17 +159,20 @@ export default function IndexScreen() {
 
           // Hablar velocidad cada 20s
           if (speedKmH > 2 && now - lastSpeedVoiceTime.current > 20000) {
-            speak(`Tu velocidad actual es ${speedKmH.toFixed(0)} kilómetros por hora.`);
+            speak(
+              `Tu velocidad actual es ${speedKmH.toFixed(0)} kilómetros por hora.`,
+              0 // prioridad baja
+            );
             lastSpeedVoiceTime.current = now;
           }
 
           // Alertar exceso de velocidad
-          if (speedKmH > limit + 3 && now - lastAlertTime.current > 30000) {
+          if (speedKmH > limit + 3 && now - lastAlertTime.current > 8000) {
             lastAlertTime.current = now;
 
             speak(
-              `Atención. Has superado el límite de velocidad de ${limit} kilómetros por hora.`,
-              true
+              `Atención. Superas el límite de ${limit} kilómetros por hora.`,
+              2 // prioridad máxima
             );
 
             setTimeout(() => {
@@ -159,7 +180,7 @@ export default function IndexScreen() {
                 "⚠️ Exceso de velocidad",
                 `Velocidad actual: ${speedKmH.toFixed(1)} km/h`
               );
-            }, 400);
+            }, 300);
           }
         }
       );
