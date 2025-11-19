@@ -2,18 +2,33 @@ import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Tabs } from 'expo-router';
-import React from 'react';
+import { Tabs, useRouter } from 'expo-router';
+import * as SecureStore from "expo-secure-store";
+import React, { useEffect, useState } from 'react';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const router = useRouter();
+  const [checked, setChecked] = useState(false);
 
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = await SecureStore.getItemAsync("token");
+      if (!token) {
+        router.replace("/login");
+      }
+      setChecked(true);
+    };
+    checkAuth();
+  }, []);
+
+  if (!checked) return null;
   return (
-    <Tabs screenOptions={{ 
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false, 
-        tabBarButton: HapticTab, 
-      }} 
+    <Tabs screenOptions={{
+      tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+      headerShown: false,
+      tabBarButton: HapticTab,
+    }}
       initialRouteName='index'
     >
       <Tabs.Screen
