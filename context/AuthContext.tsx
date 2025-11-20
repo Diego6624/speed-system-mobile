@@ -39,23 +39,27 @@ export const AuthProvider = ({ children }: any) => {
   }, []);
 
   // -------------------------
-  // 📌 Obtener datos del usuario
+  // 📌 Obtener datos del usuario //TEMPORAL
   // -------------------------
   const fetchUser = async (token: string) => {
-    try {
-      const res = await axios.get(`${API_URL}/usuario/me`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+  try {
+    console.log("➡️ Enviando token:", token);
 
-      setUser(res.data);
-      return res.data;
-    } catch (err) {
-      console.log("Error obteniendo usuario:", err);
-      return null;
-    }
-  };
+    const res = await axios.get(`${API_URL}/usuario/me`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    console.log("⬅️ Respuesta /usuario/me:", res.data);
+
+    setUser(res.data);
+    return res.data;
+  } catch (err: any) {
+    console.log("❌ Error obteniendo usuario:", err.response?.data || err);
+    return null;
+  }
+};
 
   // -------------------------
   // 🔐 LOGIN

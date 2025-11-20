@@ -3,14 +3,10 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
-import { useAuth } from '@/context/AuthContext'; // asegúrate que apunte al archivo correcto
+import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
-
-export default function RootLayout() {
+function RootLayoutContent() {
   const colorScheme = useColorScheme();
 
   const { user, loading } = useAuth();
@@ -18,6 +14,7 @@ export default function RootLayout() {
   console.log("ID usuario:", user?.id);
 
   if (loading) return null;
+
   const isLogged = !!user;
 
   return (
@@ -35,7 +32,19 @@ export default function RootLayout() {
           </>
         )}
       </Stack>
-      <StatusBar style="auto" />
     </ThemeProvider>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <>
+      <AuthProvider>
+        <RootLayoutContent />
+      </AuthProvider>
+
+      {/* ✔️ ESTE StatusBar SÍ ES VÁLIDO AQUÍ */}
+      <StatusBar style="auto" />
+    </>
   );
 }
