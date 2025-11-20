@@ -1,9 +1,9 @@
 import { useAuth } from "@/hooks/useAuth";
 import { Link, useRouter } from "expo-router";
 import React, { useState } from "react";
-import { Alert } from "react-native";
 
 import {
+  Alert,
   StyleSheet,
   Text,
   TextInput,

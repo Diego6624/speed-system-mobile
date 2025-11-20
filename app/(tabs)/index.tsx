@@ -32,7 +32,6 @@ export default function IndexScreen() {
   const lastAnnouncedLimit = useRef<number | null>(null);
   const { user } = useAuth();
   const USER_ID = user?.id;
-
   // -----------------------------
   // Voz (siempre activa)
   // -----------------------------

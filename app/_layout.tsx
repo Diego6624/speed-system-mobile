@@ -14,6 +14,8 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
 
   const { user, loading } = useAuth();
+  console.log("Usuario:", user);
+  console.log("ID usuario:", user?.id);
 
   if (loading) return null;
   const isLogged = !!user;
