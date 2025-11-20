@@ -11,6 +11,7 @@ export default function HistoryScreen() {
             text: "#fff",
             cardBg: "#1a1a1a",
             cardText: "#e0e0e0",
+            icon: "#e0e0e0", // 👈 iconos en modo oscuro
             accent: "#1e90ff",
             fecha: "#aaa",
         }
@@ -19,6 +20,7 @@ export default function HistoryScreen() {
             text: "#333",
             cardBg: "#4da6ff",
             cardText: "#fff",
+            icon: "#fff", // 👈 iconos en modo claro
             accent: "#007bff",
             fecha: "#e0e0e0",
         };
@@ -38,22 +40,22 @@ export default function HistoryScreen() {
 
                     <View style={styles.row}>
                         <View style={styles.item}>
-                            <Ionicons name="map-outline" size={20} color={colors.cardText} />
+                            <Ionicons name="map-outline" size={20} color={colors.icon} />
                             <Text style={[styles.text, { color: colors.cardText }]}>Recorrido: {viaje.recorrido}</Text>
                         </View>
                         <View style={styles.item}>
-                            <Ionicons name="speedometer-outline" size={20} color={colors.cardText} />
+                            <Ionicons name="speedometer-outline" size={20} color={colors.icon} />
                             <Text style={[styles.text, { color: colors.cardText }]}>Máxima: {viaje.maxima}</Text>
                         </View>
                     </View>
 
                     <View style={styles.row}>
                         <View style={styles.item}>
-                            <Ionicons name="pulse-outline" size={20} color={colors.cardText} />
+                            <Ionicons name="pulse-outline" size={20} color={colors.icon} />
                             <Text style={[styles.text, { color: colors.cardText }]}>Promedio: {viaje.promedio}</Text>
                         </View>
                         <View style={styles.item}>
-                            <Ionicons name="time-outline" size={20} color={colors.cardText} />
+                            <Ionicons name="time-outline" size={20} color={colors.icon} />
                             <Text style={[styles.text, { color: colors.cardText }]}>Tiempo: {viaje.tiempo}</Text>
                         </View>
                     </View>
