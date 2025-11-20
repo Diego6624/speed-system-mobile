@@ -1,5 +1,5 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
+import * as SecureStore from "expo-secure-store";
 import React, { createContext, useContext, useEffect, useState } from "react";
 
 const API_URL = "https://speedsystem-api.onrender.com";
@@ -20,64 +20,48 @@ export const AuthProvider = ({ children }: any) => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // -------------------------
-  // 🔄 Cargar token al iniciar APP
-  // -------------------------
   useEffect(() => {
     const loadSession = async () => {
-      const savedToken = await AsyncStorage.getItem("token");
-
+      const savedToken = await SecureStore.getItemAsync("token");
       if (savedToken) {
         setToken(savedToken);
         await fetchUser(savedToken);
       }
-
       setLoading(false);
     };
-
     loadSession();
   }, []);
 
-  // -------------------------
-  // 📌 Obtener datos del usuario //TEMPORAL
-  // -------------------------
   const fetchUser = async (token: string) => {
-  try {
-    console.log("➡️ Enviando token:", token);
+    try {
+      const res = await axios.get(`${API_URL}/usuario/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setUser(res.data);
+      return res.data;
+    } catch (error) {
+      console.log("Error obteniendo usuario:", error);
+      setUser(null);
+      return null;
+    }
+  };
 
-    const res = await axios.get(`${API_URL}/usuario/me`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    console.log("⬅️ Respuesta /usuario/me:", res.data);
-
-    setUser(res.data);
-    return res.data;
-  } catch (err: any) {
-    console.log("❌ Error obteniendo usuario:", err.response?.data || err);
-    return null;
-  }
-};
-
-  // -------------------------
-  // 🔐 LOGIN
-  // -------------------------
   const loginUser = async (correo: string, password: string) => {
     try {
       setLoading(true);
-
       const res = await axios.post(`${API_URL}/auth/login`, { correo, password });
       const t = res.data.token;
 
+      if (!t) {
+        console.log("Login sin token válido");
+        return false;
+      }
+
+      await SecureStore.setItemAsync("token", t);
       setToken(t);
-      await AsyncStorage.setItem("token", t);
 
       const usuario = await fetchUser(t);
-      if (!usuario) return false;
-
-      return true;
+      return !!usuario;
     } catch (error) {
       console.log("Error en login:", error);
       return false;
@@ -86,25 +70,14 @@ export const AuthProvider = ({ children }: any) => {
     }
   };
 
-  // -------------------------
-  // 🚪 LOGOUT
-  // -------------------------
   const logoutUser = async () => {
+    await SecureStore.deleteItemAsync("token");
     setToken(null);
     setUser(null);
-    await AsyncStorage.removeItem("token");
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        token,
-        user,
-        loading,
-        loginUser,
-        logoutUser,
-      }}
-    >
+    <AuthContext.Provider value={{ token, user, loading, loginUser, logoutUser }}>
       {children}
     </AuthContext.Provider>
   );

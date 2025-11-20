@@ -1,9 +1,8 @@
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/context/AuthContext";
 import { Link, useRouter } from "expo-router";
 import React, { useState } from "react";
-
 import {
-  Alert,
+  ActivityIndicator,
   StyleSheet,
   Text,
   TextInput,
@@ -23,23 +22,24 @@ export default function Login() {
 
   const colors = theme === "dark"
     ? {
-      bg: "#000",
-      text: "#fff",
-      inputBg: "#111",
-      inputBorder: "#333",
-      buttonBg: "#1e90ff",
-      link: "#1e90ff",
-    }
+        bg: "#000",
+        text: "#fff",
+        inputBg: "#111",
+        inputBorder: "#333",
+        buttonBg: "#1e90ff",
+        link: "#1e90ff",
+      }
     : {
-      bg: "#fff",
-      text: "#000",
-      inputBg: "#f3f3f3",
-      inputBorder: "#ccc",
-      buttonBg: "#007bff",
-      link: "#007bff",
-    };
+        bg: "#f9f9f9",
+        text: "#000",
+        inputBg: "#fff",
+        inputBorder: "#ddd",
+        buttonBg: "#007bff",
+        link: "#007bff",
+      };
 
   const handleLogin = async () => {
+    setErrorMsg("");
     const ok = await loginUser(correo, password);
 
     if (!ok) {
@@ -47,24 +47,18 @@ export default function Login() {
       return;
     }
 
-    Alert.alert(
-      "Inicio de sesión",
-      "Has iniciado sesión exitosamente ✔",
-      [
-        {
-          text: "OK",
-          onPress: () => router.replace("/"),
-        }
-      ]
-    );
+    router.replace("/(tabs)");
   };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
-      <Text style={[styles.title, { color: colors.text }]}>Iniciar Sesión</Text>
+      <Text style={[styles.title, { color: colors.text }]}>Bienvenido 👋</Text>
+      <Text style={[styles.subtitle, { color: colors.text }]}>
+        Inicia sesión para continuar
+      </Text>
 
       <TextInput
-        placeholder="Correo"
+        placeholder="Correo electrónico"
         placeholderTextColor="#888"
         style={[
           styles.input,
@@ -77,6 +71,7 @@ export default function Login() {
         value={correo}
         onChangeText={setCorreo}
         autoCapitalize="none"
+        keyboardType="email-address"
       />
 
       <TextInput
@@ -96,26 +91,27 @@ export default function Login() {
       />
 
       {errorMsg ? (
-        <Text style={{ color: "red", textAlign: "center", marginBottom: 15 }}>
-          {errorMsg}
-        </Text>
+        <Text style={[styles.errorText]}>{errorMsg}</Text>
       ) : null}
 
       <TouchableOpacity
         style={[styles.button, { backgroundColor: colors.buttonBg }]}
         onPress={handleLogin}
         disabled={loading}
+        activeOpacity={0.8}
       >
-        <Text style={{ color: "white", fontSize: 18 }}>
-          {loading ? "Ingresando..." : "Ingresar"}
-        </Text>
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>Ingresar</Text>
+        )}
       </TouchableOpacity>
 
       <Link
         href="/register"
-        style={{ color: colors.link, textAlign: "center", marginTop: 20 }}
+        style={[styles.link, { color: colors.link }]}
       >
-        Crear cuenta
+        ¿No tienes cuenta? Crear una
       </Link>
     </View>
   );
@@ -123,16 +119,49 @@ export default function Login() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: "center", paddingHorizontal: 30 },
-  title: { fontSize: 28, fontWeight: "bold", textAlign: "center", marginBottom: 30 },
+  title: {
+    fontSize: 32,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  subtitle: {
+    fontSize: 16,
+    textAlign: "center",
+    marginBottom: 30,
+    opacity: 0.7,
+  },
   input: {
     borderWidth: 1,
-    padding: 12,
-    borderRadius: 10,
+    padding: 14,
+    borderRadius: 12,
     marginBottom: 15,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   button: {
-    paddingVertical: 14,
-    borderRadius: 10,
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: "center",
+    marginTop: 10,
+  },
+  buttonText: {
+    color: "white",
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  link: {
+    textAlign: "center",
+    marginTop: 25,
+    fontSize: 15,
+    fontWeight: "500",
+  },
+  errorText: {
+    color: "red",
+    textAlign: "center",
+    marginBottom: 15,
+    fontSize: 14,
   },
 });
