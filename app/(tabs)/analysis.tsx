@@ -1,14 +1,24 @@
 import React from "react";
-import { StyleSheet, Text, View, useColorScheme } from "react-native";
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useColorScheme,
+} from "react-native";
 
 export default function AnalysisScreen() {
   const colorScheme = useColorScheme();
   const isDarkMode = colorScheme === "dark";
-
   const styles = createStyles(isDarkMode);
 
+  // Datos estáticos (luego los puedes reemplazar por datos del backend)
+  const data = [
+    { velocidadPromedio: "65", kilometrosRecorridos: "120", excesosVelocidad: "3 veces" },
+  ];
+
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.scrollContainer}>
       {/* Título */}
       <View style={styles.textContainer}>
         <Text style={styles.titleTxt}>Análisis de tu semana</Text>
@@ -17,39 +27,53 @@ export default function AnalysisScreen() {
         </Text>
       </View>
 
-      {/* Tarjetas */}
-      <View style={styles.cardContainer}>
-        <View style={styles.card}>
-          <Text style={styles.textCard}>Promedio de velocidad semanal</Text>
-          <Text style={styles.infoCard}>40km/h</Text>
-        </View>
+      {/* Círculos + etiquetas (texto afuera) con separadores */}
+      {data.map(({ velocidadPromedio, kilometrosRecorridos, excesosVelocidad }, i) => (
+        <View key={i} style={styles.cardsGrid}>
+          {/* Bloque 1 */}
+          <View style={styles.circleBlock}>
+            <View style={styles.circle}>
+              <Text style={styles.circleValue}>{velocidadPromedio} km/h</Text>
+            </View>
+            <Text style={styles.circleLabel}>Promedio de velocidad semanal</Text>
+            <View style={styles.separator} />
+          </View>
 
-        <View style={styles.card}>
-          <Text style={styles.textCard}>Kilómetros recorridos</Text>
-          <Text style={styles.infoCard}>40km</Text>
-        </View>
+          {/* Bloque 2 */}
+          <View style={styles.circleBlock}>
+            <View style={styles.circle}>
+              <Text style={styles.circleValue}>{kilometrosRecorridos} km</Text>
+            </View>
+            <Text style={styles.circleLabel}>Kilómetros recorridos</Text>
+            <View style={styles.separator} />
+          </View>
 
-        <View style={styles.card}>
-          <Text style={styles.textCard}>Cantidad de excesos de velocidad</Text>
-          <Text style={styles.infoCard}>1 veces</Text>
+          {/* Bloque 3 (sin separador al final) */}
+          <View style={styles.circleBlock}>
+            <View style={styles.circle}>
+              <Text style={styles.circleValue}>{excesosVelocidad}</Text>
+            </View>
+            <Text style={styles.circleLabel}>Excesos de velocidad</Text>
+          </View>
         </View>
-      </View>
-    </View>
+      ))}
+    </ScrollView>
   );
 }
 
 function createStyles(isDarkMode: boolean) {
   return StyleSheet.create({
-    container: {
-      flex: 1,
+    scrollContainer: {
+      paddingTop: 50,
+      paddingBottom: 90,
+      paddingHorizontal: 24,
       backgroundColor: isDarkMode ? "#000" : "#fff",
       alignItems: "center",
-      paddingTop: 50,
     },
     textContainer: {
       alignItems: "center",
-      paddingHorizontal: 30,
-      marginBottom: 30,
+      marginBottom: 28,
+      paddingHorizontal: 16,
     },
     titleTxt: {
       color: "#2BAEEF",
@@ -59,40 +83,72 @@ function createStyles(isDarkMode: boolean) {
       marginBottom: 8,
     },
     subTxt: {
-      color: isDarkMode ? "#6C6C6C" : "#666",
-      fontSize: 17,
+      color: isDarkMode ? "#d6d6d6" : "#6C6C6C", // corregido el hex
+      fontSize: 16.5,
       textAlign: "center",
+      lineHeight: 22,
     },
-    cardContainer: {
+
+    // Grid vertical con separación uniforme
+    cardsGrid: {
       width: "100%",
       alignItems: "center",
-      gap: 20,
+      gap: 30,
     },
-    card: {
-      flexDirection: "row",
-      justifyContent: "space-between",
+
+    // Bloque: círculo + etiqueta (texto afuera)
+    circleBlock: {
       alignItems: "center",
-      backgroundColor: "#2BAEEF",
-      borderRadius: 10,
-      paddingVertical: 20,
-      paddingHorizontal: 20,
-      width: "85%",
-      height: '20%',
-      shadowColor: "#000",
+      gap: 15,
+      width: "100%",
+    },
+
+    // Círculo (paleta actual que usaste)
+    circle: {
+      width: 170,
+      aspectRatio: 1,
+      borderRadius: 85,
+      backgroundColor: "#24372C",
+      borderColor: "#66E4F5",
+      borderWidth: 2,
+      justifyContent: "center",
+      alignItems: "center",
+      shadowColor: "#66E4F5",
       shadowOpacity: 0.15,
       shadowOffset: { width: 0, height: 2 },
       shadowRadius: 5,
       elevation: 3,
+      paddingHorizontal: 12,
     },
-    textCard: {
-      color: "#fff",
-      fontSize: 17,
-      flexShrink: 1,
-    },
-    infoCard: {
-      color: "#fff",
-      fontSize: 23,
+
+    // Valor dentro del círculo con pseudo-borde (sombra)
+    circleValue: {
+      color: "#67E8F9",
+      fontSize: 32,
       fontWeight: "bold",
+      textAlign: "center",
+      textShadowColor: "#315A55",
+      textShadowOffset: { width: 0, height: 0 },
+      textShadowRadius: 3,
+    },
+
+    // Etiqueta afuera del círculo
+    circleLabel: {
+      color: isDarkMode ? "#FFFFFF" : "#2BAEEF",
+      fontSize: 17,
+      textAlign: "center",
+      lineHeight: 20,
+      maxWidth: 220,
+      fontWeight: "bold",
+    },
+
+    // Línea separadora (no en el último bloque)
+    separator: {
+      width: "70%",
+      height: 1,
+      backgroundColor: isDarkMode ? "#ffffffff" : "#000000ff",
+      opacity: 0.4,
+      marginTop: 12,
     },
   });
 }
