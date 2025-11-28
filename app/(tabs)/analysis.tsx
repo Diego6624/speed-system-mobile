@@ -108,12 +108,12 @@ function createStyles(isDarkMode: boolean) {
       width: 170,
       aspectRatio: 1,
       borderRadius: 85,
-      backgroundColor: "#24372C",
-      borderColor: "#66E4F5",
+      backgroundColor: isDarkMode ? "#24372C" : "#ffffffff",
+      borderColor: isDarkMode ? "#66E4F5" : "#2BAEEF",
       borderWidth: 2,
       justifyContent: "center",
       alignItems: "center",
-      shadowColor: "#66E4F5",
+      shadowColor: isDarkMode ? "#66E4F5" : "#2BAEEF",
       shadowOpacity: 0.15,
       shadowOffset: { width: 0, height: 2 },
       shadowRadius: 5,
@@ -123,18 +123,18 @@ function createStyles(isDarkMode: boolean) {
 
     // Valor dentro del círculo con pseudo-borde (sombra)
     circleValue: {
-      color: "#67E8F9",
+      color: isDarkMode ? "#67E8F9" : "#494949ff",
       fontSize: 32,
       fontWeight: "bold",
       textAlign: "center",
-      textShadowColor: "#315A55",
+      textShadowColor: isDarkMode ? "#315A55" : "#ffffffff",
       textShadowOffset: { width: 0, height: 0 },
       textShadowRadius: 3,
     },
 
     // Etiqueta afuera del círculo
     circleLabel: {
-      color: isDarkMode ? "#FFFFFF" : "#2BAEEF",
+      color: isDarkMode ? "#FFFFFF" : "#000000ff",
       fontSize: 17,
       textAlign: "center",
       lineHeight: 20,

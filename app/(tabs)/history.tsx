@@ -1,13 +1,13 @@
 import { LinearGradient } from "expo-linear-gradient"; // 👈 necesitas expo-linear-gradient
 import React, { useState } from "react";
 import {
-    ImageBackground,
-    Modal,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View
+  ImageBackground,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from "react-native";
 
 export default function HistoryModel() {
