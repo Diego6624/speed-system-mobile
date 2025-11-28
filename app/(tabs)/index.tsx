@@ -4,17 +4,18 @@ import { obtenerLimiteVelocidad } from "@/services/speedLimit";
 import * as Location from "expo-location";
 import * as Speech from "expo-speech";
 import React, { useEffect, useRef, useState } from "react";
-import { Alert, AppState, Dimensions, StyleSheet, Text, View } from "react-native";
+import { Alert, AppState, Dimensions, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 
 export default function IndexScreen() {
   const [location, setLocation] = useState<any>(null);
   const [speed, setSpeed] = useState(0);
   const [limit, setLimit] = useState(40);
+  const [isTracking, setIsTracking] = useState(false);
 
   const recorridoId = useRef<number | null>(null);
   const appState = useRef(AppState.currentState);
-
+  
   // Cooldowns: PRÓXIMO tiempo permitido para cada anuncio
   const nextSpeedVoiceAt = useRef(0);
   const nextAlertVoiceAt = useRef(0);
@@ -32,6 +33,11 @@ export default function IndexScreen() {
 
   const { user } = useAuth();
   const USER_ID = user?.id;
+
+  // Modo oscuro
+  const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === "dark";
+  const styles = createStyles(isDarkMode);
 
   const speak = (text: string, priority: 0 | 1 | 2 = 0) => {
     if (priority < LAST_PRIORITY.current) return;
@@ -194,42 +200,77 @@ export default function IndexScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <MapView
-        style={styles.map}
-        region={{
-          latitude: location.latitude,
-          longitude: location.longitude,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
-        }}
-        showsUserLocation
-        followsUserLocation
-      >
-        <Marker coordinate={location} title="Tu ubicación" />
-      </MapView>
+  <View style={styles.container}>
+    <MapView
+      style={styles.map}
+      region={{
+        latitude: location.latitude,
+        longitude: location.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      }}
+      showsUserLocation
+      followsUserLocation
+    >
+      <Marker coordinate={location} title="Tu ubicación" />
+    </MapView>
 
-      <View style={styles.infoBox}>
-        <Text style={styles.title}>Velocidad actual</Text>
-        <Text style={styles.speed}>{speed} km/h</Text>
-        <Text style={styles.limit}>Límite: {limit} km/h</Text>
-      </View>
+    {/* Ventana emergente de velocidad */}
+    <View style={styles.infoBox}>
+      <Text style={styles.tittleIdx}>Velocidad actual</Text>
+      <Text style={styles.speed}>{speed} km/h</Text>
+      <Text style={styles.limit}>Límite: {limit} km/h</Text>
     </View>
-  );
+
+    {/* Botones abajo */}
+    <View style={styles.bottomButtons}>
+      <TouchableOpacity
+        style={[styles.btn, isTracking ? styles.btnStop : styles.btnStart]}
+        onPress={isTracking ? finalizarRecorridoBackend : iniciarRecorridoBackend}
+      >
+        <Text style={styles.btnText}>
+          {isTracking ? "Parar recorrido" : "Iniciar recorrido"}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  </View>
+);
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, paddingTop: 130, justifyContent: "center", alignItems: "center" },
-  map: { width: Dimensions.get("window").width, height: Dimensions.get("window").height },
-  infoBox: {
-    position: "absolute",
-    top: 56,
-    backgroundColor: "rgba(255,255,255,0.9)",
-    padding: 15,
-    borderRadius: 15,
-    alignItems: "center",
-  },
-  title: { fontSize: 22, fontWeight: "bold" },
-  speed: { fontSize: 42, fontWeight: "bold", color: "red" },
-  limit: { fontSize: 18, color: "gray" },
-});
+function createStyles(isDarkMode: boolean) {
+  return StyleSheet.create({
+    container: { flex: 1, paddingTop: 130, justifyContent: "center", alignItems: "center" },
+    map: { width: Dimensions.get("window").width, height: Dimensions.get("window").height },
+    infoBox: {
+      position: "absolute",
+      top: 56,
+      backgroundColor: "rgba(255,255,255,0.9)",
+      padding: 15,
+      borderRadius: 15,
+      alignItems: "center",
+    },
+    title: { 
+      fontSize: 22, 
+      fontWeight: "bold",
+      color: isDarkMode ? "#ffffffff" : "#000",
+    },
+    tittleIdx: { 
+      fontSize: 22, 
+      fontWeight: "bold",
+      color: "#000",
+    },
+    speed: { fontSize: 42, fontWeight: "bold", color: "red" },
+    limit: { fontSize: 18, color: "gray" },
+    bottomButtons: {
+      position: "absolute",
+      bottom: 40,
+      flexDirection: "row",
+      justifyContent: "center",
+      width: "100%",
+    },
+    btn: { paddingVertical: 12, paddingHorizontal: 20, borderRadius: 8 },
+    btnStart: { backgroundColor: "#2BAEEF" },
+    btnStop: { backgroundColor: "#E74C3C" },
+    btnText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
+  });
+}
