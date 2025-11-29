@@ -1,6 +1,6 @@
 import { useAuth } from "@/context/AuthContext";
-import { enviarTracking, finalizarRecorrido, iniciarRecorrido } from "@/services/api";
 import { obtenerLimiteVelocidad } from "@/services/speedLimit";
+import { enviarTracking, finalizarRecorrido, iniciarRecorrido } from "@/services/trackingService";
 import * as Location from "expo-location";
 import * as Speech from "expo-speech";
 import React, { useEffect, useRef, useState } from "react";
@@ -15,7 +15,7 @@ export default function IndexScreen() {
 
   const recorridoId = useRef<number | null>(null);
   const appState = useRef(AppState.currentState);
-  
+
   // Cooldowns: PRÓXIMO tiempo permitido para cada anuncio
   const nextSpeedVoiceAt = useRef(0);
   const nextAlertVoiceAt = useRef(0);
@@ -55,19 +55,22 @@ export default function IndexScreen() {
     });
   };
 
-  const iniciarRecorridoBackend = async () => {
+  const startTracking = async () => {
     try {
       const data = await iniciarRecorrido(USER_ID);
       recorridoId.current = data.id;
+      setIsTracking(true); // activar estado tracking
     } catch (e) {
       console.log("Error al iniciar recorrido:", e);
     }
   };
 
-  const finalizarRecorridoBackend = async () => {
+  const stopTracking = async () => {
     if (!recorridoId.current) return;
     try {
       await finalizarRecorrido(recorridoId.current);
+      recorridoId.current = null;
+      setIsTracking(false); // desactivar estado tracking
     } catch (e) {
       console.log("Error finalizando recorrido:", e);
     }
@@ -76,7 +79,7 @@ export default function IndexScreen() {
   useEffect(() => {
     const sub = AppState.addEventListener("change", async (next) => {
       if (appState.current.match(/active/) && next === "background") {
-        await finalizarRecorridoBackend();
+        await stopTracking();
       }
       appState.current = next;
     });
@@ -87,7 +90,7 @@ export default function IndexScreen() {
     let locationSubscription: Location.LocationSubscription | null = null;
 
     (async () => {
-      await iniciarRecorridoBackend();
+      await startTracking();
 
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
@@ -187,7 +190,7 @@ export default function IndexScreen() {
       if (locationSubscription) {
         locationSubscription.remove();
       }
-      void finalizarRecorridoBackend();
+      void stopTracking();
     };
   }, []);
 
@@ -200,41 +203,41 @@ export default function IndexScreen() {
   }
 
   return (
-  <View style={styles.container}>
-    <MapView
-      style={styles.map}
-      region={{
-        latitude: location.latitude,
-        longitude: location.longitude,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      }}
-      showsUserLocation
-      followsUserLocation
-    >
-      <Marker coordinate={location} title="Tu ubicación" />
-    </MapView>
-
-    {/* Ventana emergente de velocidad */}
-    <View style={styles.infoBox}>
-      <Text style={styles.tittleIdx}>Velocidad actual</Text>
-      <Text style={styles.speed}>{speed} km/h</Text>
-      <Text style={styles.limit}>Límite: {limit} km/h</Text>
-    </View>
-
-    {/* Botones abajo */}
-    <View style={styles.bottomButtons}>
-      <TouchableOpacity
-        style={[styles.btn, isTracking ? styles.btnStop : styles.btnStart]}
-        onPress={isTracking ? finalizarRecorridoBackend : iniciarRecorridoBackend}
+    <View style={styles.container}>
+      <MapView
+        style={styles.map}
+        region={{
+          latitude: location.latitude,
+          longitude: location.longitude,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        }}
+        showsUserLocation
+        followsUserLocation
       >
-        <Text style={styles.btnText}>
-          {isTracking ? "Parar recorrido" : "Iniciar recorrido"}
-        </Text>
-      </TouchableOpacity>
+        <Marker coordinate={location} title="Tu ubicación" />
+      </MapView>
+
+      {/* Ventana emergente de velocidad */}
+      <View style={styles.infoBox}>
+        <Text style={styles.tittleIdx}>Velocidad actual</Text>
+        <Text style={styles.speed}>{speed} km/h</Text>
+        <Text style={styles.limit}>Límite: {limit} km/h</Text>
+      </View>
+
+      {/* Botón abajo */}
+      <View style={styles.bottomButtons}>
+        <TouchableOpacity
+          style={[styles.btn, isTracking ? styles.btnStop : styles.btnStart]}
+          onPress={isTracking ? stopTracking : startTracking}
+        >
+          <Text style={styles.btnText}>
+            {isTracking ? "Parar recorrido" : "Iniciar recorrido"}
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
-  </View>
-);
+  );
 }
 
 function createStyles(isDarkMode: boolean) {
@@ -249,13 +252,13 @@ function createStyles(isDarkMode: boolean) {
       borderRadius: 15,
       alignItems: "center",
     },
-    title: { 
-      fontSize: 22, 
+    title: {
+      fontSize: 22,
       fontWeight: "bold",
       color: isDarkMode ? "#ffffffff" : "#000",
     },
-    tittleIdx: { 
-      fontSize: 22, 
+    tittleIdx: {
+      fontSize: 22,
       fontWeight: "bold",
       color: "#000",
     },

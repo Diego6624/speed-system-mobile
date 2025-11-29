@@ -1,5 +1,4 @@
-import { getWeeklyStats } from "@/services/tripService";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -17,28 +16,6 @@ export default function AnalysisScreen() {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const data = await getWeeklyStats();
-        setStats(data);
-      } catch (e) {
-        console.log("Error obteniendo stats:", e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchStats();
-  }, []);
-
-  if (loading) {
-    return (
-      <View style={styles.scrollContainer}>
-        <ActivityIndicator size="large" color={isDarkMode ? "#67E8F9" : "#2BAEEF"} />
-      </View>
-    );
-  }
-
   return (
     <ScrollView contentContainerStyle={styles.scrollContainer}>
       {/* Título */}
@@ -54,7 +31,11 @@ export default function AnalysisScreen() {
         {/* Bloque 1 */}
         <View style={styles.circleBlock}>
           <View style={styles.circle}>
-            <Text style={styles.circleValue}>{stats?.velocidadPromSemanal ?? 0} km/h</Text>
+            {loading ? (
+              <ActivityIndicator size="large" color={isDarkMode ? "#67E8F9" : "#2BAEEF"} />
+            ) : (
+              <Text style={styles.circleValue}>{stats?.velocidadPromSemanal} km/h</Text>
+            )}
           </View>
           <Text style={styles.circleLabel}>Promedio de velocidad semanal</Text>
           <View style={styles.separator} />
@@ -63,16 +44,24 @@ export default function AnalysisScreen() {
         {/* Bloque 2 */}
         <View style={styles.circleBlock}>
           <View style={styles.circle}>
-            <Text style={styles.circleValue}>{stats?.kilometrosRecorridos ?? 0} km</Text>
+            {loading ? (
+              <ActivityIndicator size="large" color={isDarkMode ? "#67E8F9" : "#2BAEEF"} />
+            ) : (
+              <Text style={styles.circleValue}>{stats?.kilometrosRecorridos} km</Text>
+            )}
           </View>
           <Text style={styles.circleLabel}>Kilómetros recorridos</Text>
           <View style={styles.separator} />
         </View>
 
-        {/* Bloque 3 (sin separador al final) */}
+        {/* Bloque 3 */}
         <View style={styles.circleBlock}>
           <View style={styles.circle}>
-            <Text style={styles.circleValue}>{stats?.excesosVelocidad ?? 0} veces</Text>
+            {loading ? (
+              <ActivityIndicator size="large" color={isDarkMode ? "#67E8F9" : "#2BAEEF"} />
+            ) : (
+              <Text style={styles.circleValue}>{stats?.excesosVelocidad} veces</Text>
+            )}
           </View>
           <Text style={styles.circleLabel}>Excesos de velocidad</Text>
         </View>
