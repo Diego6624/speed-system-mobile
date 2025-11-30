@@ -4,7 +4,7 @@ import { enviarTracking, finalizarRecorrido, iniciarRecorrido } from "@/services
 import * as Location from "expo-location";
 import * as Speech from "expo-speech";
 import React, { useEffect, useRef, useState } from "react";
-import { Alert, AppState, Dimensions, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from "react-native";
+import { Alert, Dimensions, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 
 export default function IndexScreen() {
@@ -14,7 +14,7 @@ export default function IndexScreen() {
   const [isTracking, setIsTracking] = useState(false);
 
   const recorridoId = useRef<number | null>(null);
-  const appState = useRef(AppState.currentState);
+  // const appState = useRef(AppState.currentState);
 
   // Cooldowns: PRÓXIMO tiempo permitido para cada anuncio
   const nextSpeedVoiceAt = useRef(0);
@@ -76,15 +76,15 @@ export default function IndexScreen() {
     }
   };
 
-  useEffect(() => {
-    const sub = AppState.addEventListener("change", async (next) => {
-      if (appState.current.match(/active/) && next === "background") {
-        await stopTracking();
-      }
-      appState.current = next;
-    });
-    return () => sub.remove();
-  }, []);
+  // useEffect(() => {
+  //   const sub = AppState.addEventListener("change", async (next) => {
+  //     if (appState.current.match(/active/) && next === "background") {
+  //       await stopTracking();
+  //     }
+  //     appState.current = next;
+  //   });
+  //   return () => sub.remove();
+  // }, []);
 
   useEffect(() => {
     let locationSubscription: Location.LocationSubscription | null = null;
