@@ -56,14 +56,14 @@ export default function IndexScreen() {
   };
 
   const startTracking = async () => {
-    try {
-      const data = await iniciarRecorrido(USER_ID);
-      recorridoId.current = data.id;
-      setIsTracking(true); // activar estado tracking
-    } catch (e) {
-      console.log("Error al iniciar recorrido:", e);
-    }
-  };
+  try {
+    const data = await iniciarRecorrido(); // ← sin USER_ID
+    recorridoId.current = data.id;
+    setIsTracking(true); // activar estado tracking
+  } catch (e) {
+    console.log("Error al iniciar recorrido:", e);
+  }
+};
 
   const stopTracking = async () => {
     if (!recorridoId.current) return;
