@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { getWeeklyStats } from "@/services/trackingAnalysisService"; // ajusta la ruta según tu proyecto
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -12,49 +14,87 @@ export default function AnalysisScreen() {
   const colorScheme = useColorScheme();
   const isDarkMode = colorScheme === "dark";
   const styles = createStyles(isDarkMode);
-
+  const { token } = useAuth();
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        if (!token || !token.includes(".")) {
+          setErrorMsg("Tu sesión ha expirado, vuelve a iniciar sesión.");
+          setLoading(false);
+          return;
+        }
 
-  return (
+        const data = await getWeeklyStats(token);
+
+        if (!data || data.totalKm === 0) {
+          setErrorMsg("No tienes recorridos registrados esta semana.");
+        } else {
+          setStats(data);
+        }
+      } catch (err) {
+        console.error("Error cargando análisis:", err);
+        setErrorMsg("No se pudo cargar el análisis. Intenta más tarde.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, [token]);
+
+  return errorMsg ? (
+    <View style={styles.errorContainer}>
+      <Text style={styles.errorTitle}>Ups...</Text>
+      <Text style={styles.errorMessage}>{errorMsg}</Text>
+      <View style={styles.retryButton} onTouchEnd={() => {
+        setErrorMsg(null);
+        setLoading(true);
+        setStats(null);
+      }}>
+        <Text style={styles.retryText}>Reintentar</Text>
+      </View>
+    </View>
+  ) : (
     <ScrollView contentContainerStyle={styles.scrollContainer}>
       {/* Título */}
       <View style={styles.textContainer}>
         <Text style={styles.titleTxt}>Análisis de tu semana</Text>
         <Text style={styles.subTxt}>
-          Aquí podrás ver como ha sido tu recorrido durante esta semana
+          Aquí podrás ver cómo ha sido tu recorrido durante esta semana
         </Text>
       </View>
 
-      {/* Círculos + etiquetas (texto afuera) con separadores */}
+      {/* Círculos + etiquetas */}
       <View style={styles.cardsGrid}>
-        {/* Bloque 1 */}
+        {/* Promedio de velocidad */}
         <View style={styles.circleBlock}>
           <View style={styles.circle}>
             {loading ? (
               <ActivityIndicator size="large" color={isDarkMode ? "#67E8F9" : "#2BAEEF"} />
             ) : (
-              <Text style={styles.circleValue}>{stats?.velocidadPromSemanal} km/h</Text>
+              <Text style={styles.circleValue}>{stats?.velocidadProm} km/h</Text>
             )}
           </View>
           <Text style={styles.circleLabel}>Promedio de velocidad semanal</Text>
           <View style={styles.separator} />
         </View>
 
-        {/* Bloque 2 */}
+        {/* Kilómetros recorridos */}
         <View style={styles.circleBlock}>
           <View style={styles.circle}>
             {loading ? (
               <ActivityIndicator size="large" color={isDarkMode ? "#67E8F9" : "#2BAEEF"} />
             ) : (
-              <Text style={styles.circleValue}>{stats?.kilometrosRecorridos} km</Text>
+              <Text style={styles.circleValue}>{stats?.totalKm} km</Text>
             )}
           </View>
           <Text style={styles.circleLabel}>Kilómetros recorridos</Text>
           <View style={styles.separator} />
         </View>
 
-        {/* Bloque 3 */}
+        {/* Excesos de velocidad */}
         <View style={styles.circleBlock}>
           <View style={styles.circle}>
             {loading ? (
@@ -68,6 +108,7 @@ export default function AnalysisScreen() {
       </View>
     </ScrollView>
   );
+
 }
 
 function createStyles(isDarkMode: boolean) {
@@ -146,6 +187,40 @@ function createStyles(isDarkMode: boolean) {
       backgroundColor: isDarkMode ? "#fff" : "#000",
       opacity: 0.4,
       marginTop: 12,
+    },
+    errorContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: 24,
+      paddingVertical: 40,
+      backgroundColor: isDarkMode ? "#000" : "#fff",
+    },
+    errorTitle: {
+      fontSize: 28,
+      fontWeight: "bold",
+      color: isDarkMode ? "#FF6B6B" : "#D00000",
+      marginBottom: 12,
+    },
+    errorMessage: {
+      fontSize: 17,
+      textAlign: "center",
+      color: isDarkMode ? "#fff" : "#333",
+      lineHeight: 24,
+    },
+    retryButton: {
+      marginTop: 24,
+      paddingVertical: 12,
+      paddingHorizontal: 24,
+      backgroundColor: isDarkMode ? "#FF6B6B" : "#D00000",
+      borderRadius: 8,
+    },
+
+    retryText: {
+      color: "#fff",
+      fontSize: 16,
+      fontWeight: "bold",
+      textAlign: "center",
     },
   });
 }

@@ -14,84 +14,62 @@ export default function IndexScreen() {
   const [isTracking, setIsTracking] = useState(false);
 
   const recorridoId = useRef<number | null>(null);
-  // const appState = useRef(AppState.currentState);
 
-  // Cooldowns: PRÓXIMO tiempo permitido para cada anuncio
+  // Cooldowns
   const nextSpeedVoiceAt = useRef(0);
   const nextAlertVoiceAt = useRef(0);
   const nextLimitVoiceAt = useRef(0);
 
-  // Cooldown global: evita dos voces pegadas en un mismo ciclo/segundo
-  const nextVoiceAnyAt = useRef(0);
-
-  // Tracking último límite anunciado y throttle de fetch
   const lastAnnouncedLimit = useRef<number | null>(null);
   const nextLimitFetchAt = useRef(0);
-
-  // Prioridad actual (2 alerta, 1 límite, 0 velocidad)
   const LAST_PRIORITY = useRef<0 | 1 | 2>(0);
 
   const { user } = useAuth();
   const USER_ID = user?.id;
 
-  // Modo oscuro
   const colorScheme = useColorScheme();
   const isDarkMode = colorScheme === "dark";
   const styles = createStyles(isDarkMode);
 
   const speak = (text: string, priority: 0 | 1 | 2 = 0) => {
     if (priority < LAST_PRIORITY.current) return;
-    if (priority === 2) {
-      Speech.stop(); // alerta interrumpe todo
-    }
+    if (priority === 2) Speech.stop();
     LAST_PRIORITY.current = priority;
 
     Speech.speak(text, {
       language: "es-ES",
       rate: 0.95,
       onDone: () => {
-        LAST_PRIORITY.current = 0; // vuelve a normal al terminar
+        LAST_PRIORITY.current = 0;
       },
     });
   };
 
   const startTracking = async () => {
-  try {
-    const data = await iniciarRecorrido(); // ← sin USER_ID
-    recorridoId.current = data.id;
-    setIsTracking(true); // activar estado tracking
-  } catch (e) {
-    console.log("Error al iniciar recorrido:", e);
-  }
-};
+    try {
+      const data = await iniciarRecorrido();
+      recorridoId.current = data.id;
+      setIsTracking(true);
+    } catch (e) {
+      console.log("Error al iniciar recorrido:", e);
+    }
+  };
 
   const stopTracking = async () => {
     if (!recorridoId.current) return;
     try {
       await finalizarRecorrido(recorridoId.current);
       recorridoId.current = null;
-      setIsTracking(false); // desactivar estado tracking
+      setIsTracking(false);
     } catch (e) {
       console.log("Error finalizando recorrido:", e);
     }
   };
 
-  // useEffect(() => {
-  //   const sub = AppState.addEventListener("change", async (next) => {
-  //     if (appState.current.match(/active/) && next === "background") {
-  //       await stopTracking();
-  //     }
-  //     appState.current = next;
-  //   });
-  //   return () => sub.remove();
-  // }, []);
-
   useEffect(() => {
     let locationSubscription: Location.LocationSubscription | null = null;
 
     (async () => {
-      await startTracking();
-
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
         Alert.alert("Permiso denegado", "Activa la ubicación para continuar");
@@ -105,91 +83,70 @@ export default function IndexScreen() {
           distanceInterval: 4,
         },
         async (loc) => {
-          const now = Date.now();
-          let didSpeak = false;
-
           if (!loc?.coords) return;
 
+          // Siempre: actualizar ubicación y velocidad
+          setLocation(loc.coords);
           const speedMs = loc.coords.speed ?? 0;
           const speedKmH = Math.max(0, Math.min(speedMs * 3.6, 150));
-
           setSpeed(Number(speedKmH.toFixed(1)));
-          setLocation(loc.coords);
 
-          // 1) ALERTA (prioridad 2)
-          if (!didSpeak && speedKmH > limit + 3 && now >= nextAlertVoiceAt.current && now >= nextVoiceAnyAt.current) {
-            speak(`Atención. Superas el límite de ${limit} kilómetros por hora.`, 2);
-            nextAlertVoiceAt.current = now + 8000;   // cooldown alerta
-            nextVoiceAnyAt.current = now + 1200;     // separación mínima entre voces
-            didSpeak = true;
+          const now = Date.now();
 
-            setTimeout(() => {
-              Alert.alert("⚠️ Exceso de velocidad", `Velocidad actual: ${speedKmH.toFixed(1)} km/h`);
-            }, 300);
-          }
-
-          // 2) FETCH LÍMITE con throttle
+          // Siempre: calcular límite de velocidad
           if (now >= nextLimitFetchAt.current) {
-            nextLimitFetchAt.current = now + 7000; // cada 7s
+            nextLimitFetchAt.current = now + 7000;
             try {
               const nuevoLimite = await obtenerLimiteVelocidad(
                 loc.coords.latitude,
                 loc.coords.longitude
               );
-
-              // 2.a) ANUNCIO LÍMITE (prioridad 1)
-              if (
-                !didSpeak &&
-                nuevoLimite !== null &&
-                lastAnnouncedLimit.current !== nuevoLimite &&
-                now >= nextLimitVoiceAt.current &&
-                now >= nextVoiceAnyAt.current
-              ) {
-                lastAnnouncedLimit.current = nuevoLimite;
+              if (nuevoLimite !== null) {
                 setLimit(nuevoLimite);
-
-                speak(`Nuevo límite de velocidad: ${nuevoLimite} kilómetros por hora.`, 1);
-                nextLimitVoiceAt.current = now + 10000; // cooldown límite
-                nextVoiceAnyAt.current = now + 1200;    // separación mínima entre voces
-                didSpeak = true;
+                if (nuevoLimite !== lastAnnouncedLimit.current) {
+                  lastAnnouncedLimit.current = null; // fuerza re-anuncio
+                }
               }
             } catch (e) {
               console.log("Error obteniendo límite OSM:", e);
             }
           }
 
-          // 3) VELOCIDAD (prioridad 0)
-          // No se dispara si ya habló algo en este ciclo (didSpeak)
-          if (
-            !didSpeak &&
-            speedKmH > 2 &&
-            now >= nextSpeedVoiceAt.current &&
-            now >= nextVoiceAnyAt.current &&
-            LAST_PRIORITY.current < 2 // no hablar si hay alerta activa
-          ) {
-            speak(`Tu velocidad actual es ${speedKmH.toFixed(0)} kilómetros por hora.`, 0);
-            nextSpeedVoiceAt.current = now + 20000; // cooldown velocidad
-            nextVoiceAnyAt.current = now + 1200;    // separación mínima entre voces
-            didSpeak = true;
+          // 🔊 Lógica de voz y alertas
+          // Exceso de velocidad
+          if (speedKmH > limit + 3 && now >= nextAlertVoiceAt.current) {
+            console.log("🚨 Voz: exceso de velocidad");
+            speak(`Atención. Superas el límite de ${limit} kilómetros por hora.`, 2);
+            nextAlertVoiceAt.current = now + 8000; // 8s cooldown
+            Alert.alert("⚠️ Exceso de velocidad", `Velocidad actual: ${speedKmH.toFixed(1)} km/h`);
           }
 
-          // TRACKING (sin bloquear)
-          if (recorridoId.current) {
-            enviarTracking(
-              recorridoId.current,
-              loc.coords.latitude,
-              loc.coords.longitude,
-              speedKmH
-            ).catch((e) => console.log("Error enviando tracking:", e));
+          // Cambio de límite
+          if (limit !== null && lastAnnouncedLimit.current !== limit && now >= nextLimitVoiceAt.current) {
+            console.log("📢 Voz: nuevo límite detectado");
+            lastAnnouncedLimit.current = limit;
+            speak(`Nuevo límite de velocidad: ${limit} kilómetros por hora.`, 1);
+            nextLimitVoiceAt.current = now + 10000; // 10s cooldown
+          }
+
+          // Velocidad actual
+          if (speedKmH > 2 && now >= nextSpeedVoiceAt.current && LAST_PRIORITY.current < 2) {
+            console.log("ℹ️ Voz: velocidad actual");
+            speak(`Tu velocidad actual es ${speedKmH.toFixed(0)} kilómetros por hora.`, 0);
+            nextSpeedVoiceAt.current = now + 20000; // 20s cooldown
+          }
+
+          // 🔧 Solo si tracking está activo → enviar puntos al backend
+          if (isTracking && recorridoId.current) {
+            enviarTracking(recorridoId.current, loc.coords.latitude, loc.coords.longitude, speedKmH)
+              .catch((e) => console.log("Error enviando tracking:", e));
           }
         }
       );
     })();
 
     return () => {
-      if (locationSubscription) {
-        locationSubscription.remove();
-      }
+      if (locationSubscription) locationSubscription.remove();
       void stopTracking();
     };
   }, []);
@@ -218,14 +175,12 @@ export default function IndexScreen() {
         <Marker coordinate={location} title="Tu ubicación" />
       </MapView>
 
-      {/* Ventana emergente de velocidad */}
       <View style={styles.infoBox}>
         <Text style={styles.tittleIdx}>Velocidad actual</Text>
         <Text style={styles.speed}>{speed} km/h</Text>
         <Text style={styles.limit}>Límite: {limit} km/h</Text>
       </View>
 
-      {/* Botón abajo */}
       <View style={styles.bottomButtons}>
         <TouchableOpacity
           style={[styles.btn, isTracking ? styles.btnStop : styles.btnStart]}
@@ -252,16 +207,8 @@ function createStyles(isDarkMode: boolean) {
       borderRadius: 15,
       alignItems: "center",
     },
-    title: {
-      fontSize: 22,
-      fontWeight: "bold",
-      color: isDarkMode ? "#ffffffff" : "#000",
-    },
-    tittleIdx: {
-      fontSize: 22,
-      fontWeight: "bold",
-      color: "#000",
-    },
+    title: { fontSize: 22, fontWeight: "bold", color: isDarkMode ? "#fff" : "#000" },
+    tittleIdx: { fontSize: 22, fontWeight: "bold", color: "#000" },
     speed: { fontSize: 42, fontWeight: "bold", color: "red" },
     limit: { fontSize: 18, color: "gray" },
     bottomButtons: {
