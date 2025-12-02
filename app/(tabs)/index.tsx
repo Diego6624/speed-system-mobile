@@ -1,118 +1,113 @@
 import { useAuth } from "@/context/AuthContext";
-import {
-  enviarTracking,
-  finalizarRecorrido,
-  iniciarRecorrido,
-} from "@/services/api";
 import { obtenerLimiteVelocidad } from "@/services/speedLimit";
+import { enviarTracking, finalizarRecorrido, iniciarRecorrido } from "@/services/trackingService";
 import * as Location from "expo-location";
 import * as Speech from "expo-speech";
 import React, { useEffect, useRef, useState } from "react";
-import {
-  Alert,
-  AppState,
-  Dimensions,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Alert, Dimensions, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 
 export default function IndexScreen() {
   const [location, setLocation] = useState<any>(null);
   const [speed, setSpeed] = useState(0);
   const [limit, setLimit] = useState(40);
+  const [isTracking, setIsTracking] = useState(false);
 
   const recorridoId = useRef<number | null>(null);
-  const appState = useRef(AppState.currentState);
+  // const appState = useRef(AppState.currentState);
 
-  const lastAlertTime = useRef(0);
-  const lastSpeedVoiceTime = useRef(0);
-  const isSpeaking = useRef(false);
+  // Cooldowns: PRÓXIMO tiempo permitido para cada anuncio
+  const nextSpeedVoiceAt = useRef(0);
+  const nextAlertVoiceAt = useRef(0);
+  const nextLimitVoiceAt = useRef(0);
+
+  // Cooldown global: evita dos voces pegadas en un mismo ciclo/segundo
+  const nextVoiceAnyAt = useRef(0);
+
+  // Tracking último límite anunciado y throttle de fetch
   const lastAnnouncedLimit = useRef<number | null>(null);
+  const nextLimitFetchAt = useRef(0);
+
+  // Prioridad actual (2 alerta, 1 límite, 0 velocidad)
+  const LAST_PRIORITY = useRef<0 | 1 | 2>(0);
+
   const { user } = useAuth();
   const USER_ID = user?.id;
-  // -----------------------------
-  // Voz (siempre activa)
-  // -----------------------------
-  const LAST_PRIORITY = useRef<0 | 1 | 2>(0);
-  // 2 = alerta, 1 = cambio limite, 0 = velocidad normal
+
+  // Modo oscuro
+  const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === "dark";
+  const styles = createStyles(isDarkMode);
 
   const speak = (text: string, priority: 0 | 1 | 2 = 0) => {
-    // No interrumpir si algo más importante está hablando
     if (priority < LAST_PRIORITY.current) return;
-
-    // Si prioridad ALTA, interrumpe todo
     if (priority === 2) {
-      Speech.stop();
+      Speech.stop(); // alerta interrumpe todo
     }
-
     LAST_PRIORITY.current = priority;
-    isSpeaking.current = true;
 
     Speech.speak(text, {
       language: "es-ES",
       rate: 0.95,
       onDone: () => {
-        isSpeaking.current = false;
-        LAST_PRIORITY.current = 0; // vuelve a normal
+        LAST_PRIORITY.current = 0; // vuelve a normal al terminar
       },
     });
   };
-  
-  // -----------------------------
-  // Backend: Iniciar / Finalizar recorrido
-  // -----------------------------
-  const iniciarRecorridoBackend = async () => {
-    try {
-      const data = await iniciarRecorrido(USER_ID);
-      recorridoId.current = data.id;
-    } catch (e) {
-      console.log("Error al iniciar recorrido:", e);
-    }
-  };
 
-  const finalizarRecorridoBackend = async () => {
+  const startTracking = async () => {
+  try {
+    const data = await iniciarRecorrido(); // ← sin USER_ID
+    recorridoId.current = data.id;
+    setIsTracking(true); // activar estado tracking
+  } catch (e) {
+    console.log("Error al iniciar recorrido:", e);
+  }
+};
+
+  const stopTracking = async () => {
     if (!recorridoId.current) return;
     try {
       await finalizarRecorrido(recorridoId.current);
+      recorridoId.current = null;
+      setIsTracking(false); // desactivar estado tracking
     } catch (e) {
       console.log("Error finalizando recorrido:", e);
     }
   };
 
-  // Detectar cierre de app
-  useEffect(() => {
-    const sub = AppState.addEventListener("change", async (next) => {
-      if (appState.current.match(/active/) && next === "background") {
-        await finalizarRecorridoBackend();
-      }
-      appState.current = next;
-    });
+  // useEffect(() => {
+  //   const sub = AppState.addEventListener("change", async (next) => {
+  //     if (appState.current.match(/active/) && next === "background") {
+  //       await stopTracking();
+  //     }
+  //     appState.current = next;
+  //   });
+  //   return () => sub.remove();
+  // }, []);
 
-    return () => sub.remove();
-  }, []);
-
-  // -----------------------------
-  // GPS + Tracking + OSM
-  // -----------------------------
   useEffect(() => {
+    let locationSubscription: Location.LocationSubscription | null = null;
 
     (async () => {
-      await iniciarRecorridoBackend();
+      await startTracking();
 
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        return Alert.alert("Permiso denegado", "Activa la ubicación para continuar");
+        Alert.alert("Permiso denegado", "Activa la ubicación para continuar");
+        return;
       }
 
-      await Location.watchPositionAsync(
+      locationSubscription = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.Highest,
           timeInterval: 1500,
           distanceInterval: 4,
         },
         async (loc) => {
+          const now = Date.now();
+          let didSpeak = false;
+
           if (!loc?.coords) return;
 
           const speedMs = loc.coords.speed ?? 0;
@@ -121,78 +116,84 @@ export default function IndexScreen() {
           setSpeed(Number(speedKmH.toFixed(1)));
           setLocation(loc.coords);
 
-          // 🚀 Llamar a tu API de OSM
-          const nuevoLimite = await obtenerLimiteVelocidad(
-            loc.coords.latitude,
-            loc.coords.longitude
-          );
-
-          // Limite de velocidad cambiado
-          if (nuevoLimite !== null) {
-            if (lastAnnouncedLimit.current !== nuevoLimite) {
-              console.log("🔥 Cambio REAL de límite detectado:", nuevoLimite);
-
-              lastAnnouncedLimit.current = nuevoLimite; // guardamos el último límite real
-              setLimit(nuevoLimite);
-
-              // Voz (prioridad media)
-              speak(`Nuevo límite de velocidad: ${nuevoLimite} kilómetros por hora.`, 1);
-            }
-          }
-
-          // Enviar tracking
-          if (recorridoId.current) {
-            try {
-              await enviarTracking(
-                recorridoId.current,
-                loc.coords.latitude,
-                loc.coords.longitude,
-                speedKmH
-              );
-            } catch (e) {
-              console.log("Error enviando tracking:", e);
-            }
-          }
-
-          const now = Date.now();
-
-          // Hablar velocidad cada 20s
-          if (speedKmH > 2 && now - lastSpeedVoiceTime.current > 20000) {
-            speak(
-              `Tu velocidad actual es ${speedKmH.toFixed(0)} kilómetros por hora.`,
-              0 // prioridad baja
-            );
-            lastSpeedVoiceTime.current = now;
-          }
-
-          // Alertar exceso de velocidad
-          if (speedKmH > limit + 3 && now - lastAlertTime.current > 8000) {
-            lastAlertTime.current = now;
-
-            speak(
-              `Atención. Superas el límite de ${limit} kilómetros por hora.`,
-              2 // prioridad máxima
-            );
+          // 1) ALERTA (prioridad 2)
+          if (!didSpeak && speedKmH > limit + 3 && now >= nextAlertVoiceAt.current && now >= nextVoiceAnyAt.current) {
+            speak(`Atención. Superas el límite de ${limit} kilómetros por hora.`, 2);
+            nextAlertVoiceAt.current = now + 8000;   // cooldown alerta
+            nextVoiceAnyAt.current = now + 1200;     // separación mínima entre voces
+            didSpeak = true;
 
             setTimeout(() => {
-              Alert.alert(
-                "⚠️ Exceso de velocidad",
-                `Velocidad actual: ${speedKmH.toFixed(1)} km/h`
-              );
+              Alert.alert("⚠️ Exceso de velocidad", `Velocidad actual: ${speedKmH.toFixed(1)} km/h`);
             }, 300);
+          }
+
+          // 2) FETCH LÍMITE con throttle
+          if (now >= nextLimitFetchAt.current) {
+            nextLimitFetchAt.current = now + 7000; // cada 7s
+            try {
+              const nuevoLimite = await obtenerLimiteVelocidad(
+                loc.coords.latitude,
+                loc.coords.longitude
+              );
+
+              // 2.a) ANUNCIO LÍMITE (prioridad 1)
+              if (
+                !didSpeak &&
+                nuevoLimite !== null &&
+                lastAnnouncedLimit.current !== nuevoLimite &&
+                now >= nextLimitVoiceAt.current &&
+                now >= nextVoiceAnyAt.current
+              ) {
+                lastAnnouncedLimit.current = nuevoLimite;
+                setLimit(nuevoLimite);
+
+                speak(`Nuevo límite de velocidad: ${nuevoLimite} kilómetros por hora.`, 1);
+                nextLimitVoiceAt.current = now + 10000; // cooldown límite
+                nextVoiceAnyAt.current = now + 1200;    // separación mínima entre voces
+                didSpeak = true;
+              }
+            } catch (e) {
+              console.log("Error obteniendo límite OSM:", e);
+            }
+          }
+
+          // 3) VELOCIDAD (prioridad 0)
+          // No se dispara si ya habló algo en este ciclo (didSpeak)
+          if (
+            !didSpeak &&
+            speedKmH > 2 &&
+            now >= nextSpeedVoiceAt.current &&
+            now >= nextVoiceAnyAt.current &&
+            LAST_PRIORITY.current < 2 // no hablar si hay alerta activa
+          ) {
+            speak(`Tu velocidad actual es ${speedKmH.toFixed(0)} kilómetros por hora.`, 0);
+            nextSpeedVoiceAt.current = now + 20000; // cooldown velocidad
+            nextVoiceAnyAt.current = now + 1200;    // separación mínima entre voces
+            didSpeak = true;
+          }
+
+          // TRACKING (sin bloquear)
+          if (recorridoId.current) {
+            enviarTracking(
+              recorridoId.current,
+              loc.coords.latitude,
+              loc.coords.longitude,
+              speedKmH
+            ).catch((e) => console.log("Error enviando tracking:", e));
           }
         }
       );
     })();
 
     return () => {
-      void finalizarRecorridoBackend();
+      if (locationSubscription) {
+        locationSubscription.remove();
+      }
+      void stopTracking();
     };
   }, []);
 
-  // -----------------------------
-  // UI
-  // -----------------------------
   if (!location) {
     return (
       <View style={styles.container}>
@@ -217,27 +218,62 @@ export default function IndexScreen() {
         <Marker coordinate={location} title="Tu ubicación" />
       </MapView>
 
+      {/* Ventana emergente de velocidad */}
       <View style={styles.infoBox}>
-        <Text style={styles.title}>Velocidad actual</Text>
+        <Text style={styles.tittleIdx}>Velocidad actual</Text>
         <Text style={styles.speed}>{speed} km/h</Text>
         <Text style={styles.limit}>Límite: {limit} km/h</Text>
+      </View>
+
+      {/* Botón abajo */}
+      <View style={styles.bottomButtons}>
+        <TouchableOpacity
+          style={[styles.btn, isTracking ? styles.btnStop : styles.btnStart]}
+          onPress={isTracking ? stopTracking : startTracking}
+        >
+          <Text style={styles.btnText}>
+            {isTracking ? "Parar recorrido" : "Iniciar recorrido"}
+          </Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, paddingTop: 130, justifyContent: "center", alignItems: "center" },
-  map: { width: Dimensions.get("window").width, height: Dimensions.get("window").height },
-  infoBox: {
-    position: "absolute",
-    top: 56,
-    backgroundColor: "rgba(255,255,255,0.9)",
-    padding: 15,
-    borderRadius: 15,
-    alignItems: "center",
-  },
-  title: { fontSize: 22, fontWeight: "bold" },
-  speed: { fontSize: 42, fontWeight: "bold", color: "red" },
-  limit: { fontSize: 18, color: "gray" },
-});
+function createStyles(isDarkMode: boolean) {
+  return StyleSheet.create({
+    container: { flex: 1, paddingTop: 130, justifyContent: "center", alignItems: "center" },
+    map: { width: Dimensions.get("window").width, height: Dimensions.get("window").height },
+    infoBox: {
+      position: "absolute",
+      top: 56,
+      backgroundColor: "rgba(255,255,255,0.9)",
+      padding: 15,
+      borderRadius: 15,
+      alignItems: "center",
+    },
+    title: {
+      fontSize: 22,
+      fontWeight: "bold",
+      color: isDarkMode ? "#ffffffff" : "#000",
+    },
+    tittleIdx: {
+      fontSize: 22,
+      fontWeight: "bold",
+      color: "#000",
+    },
+    speed: { fontSize: 42, fontWeight: "bold", color: "red" },
+    limit: { fontSize: 18, color: "gray" },
+    bottomButtons: {
+      position: "absolute",
+      bottom: 40,
+      flexDirection: "row",
+      justifyContent: "center",
+      width: "100%",
+    },
+    btn: { paddingVertical: 12, paddingHorizontal: 20, borderRadius: 8 },
+    btnStart: { backgroundColor: "#2BAEEF" },
+    btnStop: { backgroundColor: "#E74C3C" },
+    btnText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
+  });
+}
