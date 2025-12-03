@@ -18,6 +18,7 @@ export default function AnalysisScreen() {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
   useEffect(() => {
     const fetchStats = async () => {
       try {

@@ -137,7 +137,16 @@ export default function IndexScreen() {
           }
 
           // 🔧 Solo si tracking está activo → enviar puntos al backend
+          // 🔧 Solo si tracking está activo → enviar puntos al backend
           if (isTracking && recorridoId.current) {
+            console.log(
+              "Enviando punto:",
+              recorridoId.current,
+              loc.coords.latitude,
+              loc.coords.longitude,
+              speedKmH
+            );
+
             enviarTracking(recorridoId.current, loc.coords.latitude, loc.coords.longitude, speedKmH)
               .catch((e) => console.log("Error enviando tracking:", e));
           }
