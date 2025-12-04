@@ -14,12 +14,12 @@ export default function IndexScreen() {
   const [isTracking, setIsTracking] = useState(false);
 
   const recorridoId = useRef<number | null>(null);
+  const isTrackingRef = useRef(false); // 👈 referencia para tracking
 
   // Cooldowns
   const nextSpeedVoiceAt = useRef(0);
   const nextAlertVoiceAt = useRef(0);
   const nextLimitVoiceAt = useRef(0);
-
   const lastAnnouncedLimit = useRef<number | null>(null);
   const nextLimitFetchAt = useRef(0);
   const LAST_PRIORITY = useRef<0 | 1 | 2>(0);
@@ -48,7 +48,9 @@ export default function IndexScreen() {
   const startTracking = async () => {
     try {
       const data = await iniciarRecorrido();
+      console.log("Respuesta iniciarRecorrido:", data);
       recorridoId.current = data.id;
+      isTrackingRef.current = true; // 👈 activa la ref
       setIsTracking(true);
     } catch (e) {
       console.log("Error al iniciar recorrido:", e);
@@ -60,6 +62,7 @@ export default function IndexScreen() {
     try {
       await finalizarRecorrido(recorridoId.current);
       recorridoId.current = null;
+      isTrackingRef.current = false; // 👈 desactiva la ref
       setIsTracking(false);
     } catch (e) {
       console.log("Error finalizando recorrido:", e);
@@ -113,32 +116,28 @@ export default function IndexScreen() {
           }
 
           // 🔊 Lógica de voz y alertas
-          // Exceso de velocidad
           if (speedKmH > limit + 3 && now >= nextAlertVoiceAt.current) {
             console.log("🚨 Voz: exceso de velocidad");
             speak(`Atención. Superas el límite de ${limit} kilómetros por hora.`, 2);
-            nextAlertVoiceAt.current = now + 8000; // 8s cooldown
+            nextAlertVoiceAt.current = now + 8000;
             Alert.alert("⚠️ Exceso de velocidad", `Velocidad actual: ${speedKmH.toFixed(1)} km/h`);
           }
 
-          // Cambio de límite
           if (limit !== null && lastAnnouncedLimit.current !== limit && now >= nextLimitVoiceAt.current) {
             console.log("📢 Voz: nuevo límite detectado");
             lastAnnouncedLimit.current = limit;
             speak(`Nuevo límite de velocidad: ${limit} kilómetros por hora.`, 1);
-            nextLimitVoiceAt.current = now + 10000; // 10s cooldown
+            nextLimitVoiceAt.current = now + 10000;
           }
 
-          // Velocidad actual
           if (speedKmH > 2 && now >= nextSpeedVoiceAt.current && LAST_PRIORITY.current < 2) {
             console.log("ℹ️ Voz: velocidad actual");
             speak(`Tu velocidad actual es ${speedKmH.toFixed(0)} kilómetros por hora.`, 0);
-            nextSpeedVoiceAt.current = now + 20000; // 20s cooldown
+            nextSpeedVoiceAt.current = now + 20000;
           }
 
-          // 🔧 Solo si tracking está activo → enviar puntos al backend
-          // 🔧 Solo si tracking está activo → enviar puntos al backend
-          if (isTracking && recorridoId.current) {
+          // 🔧 Ahora usamos la ref para enviar puntos
+          if (isTrackingRef.current && recorridoId.current) {
             console.log(
               "Enviando punto:",
               recorridoId.current,
