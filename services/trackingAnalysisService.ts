@@ -1,19 +1,21 @@
 import axios from "axios";
+import * as SecureStore from "expo-secure-store";
 
 const API_URL = "https://speedsystem-api.onrender.com";
 
-// Obtener análisis semanal
-export const getWeeklyStats = async (token: string) => {
-  const res = await axios.get(`${API_URL}/api/trips/my/weekly-stats`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+const getAuthHeader = async () => {
+  const token = await SecureStore.getItemAsync("token");
+  return { Authorization: `Bearer ${token}` };
+};
+
+export const getWeeklyStats = async () => {
+  const headers = await getAuthHeader();
+  const res = await axios.get(`${API_URL}/api/trips/my/weekly-stats`, { headers });
   return res.data;
 };
 
-// Obtener historial de recorridos
-export const getMyTrips = async (token: string) => {
-  const res = await axios.get(`${API_URL}/api/trips/my`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+export const getMyTrips = async () => {
+  const headers = await getAuthHeader();
+  const res = await axios.get(`${API_URL}/api/trips/my`, { headers });
   return res.data;
 };
