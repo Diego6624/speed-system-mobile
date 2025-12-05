@@ -1,43 +1,87 @@
-import { LinearGradient } from "expo-linear-gradient"; // 👈 necesitas expo-linear-gradient
-import React, { useState } from "react";
+import { useLanguage } from "@/context/LanguageContext";
+import { useTheme } from "@/context/ThemeContext";
+import { getMyTrips } from "@/services/trackingAnalysisService";
+import { useNavigation } from "@react-navigation/native";
+import React, { useEffect, useState } from "react";
 import {
-  ImageBackground,
+  ActivityIndicator,
   Modal,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  View
+  View,
 } from "react-native";
 
 export default function HistoryModel() {
-  const data = [
-    { speed: 50, distancia: 2.5, tiempo: 0.05, promedio: 50, maximo: 60 },
-    { speed: 80, distancia: 4.0, tiempo: 0.05, promedio: 80, maximo: 90 },
-    { speed: 100, distancia: 5.0, tiempo: 0.05, promedio: 100, maximo: 110 },
-  ];
-
+  const [trips, setTrips] = useState<any[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const { t } = useLanguage();
+  const { darkMode } = useTheme();
+  const styles = createStyles(darkMode);
+  const navigation = useNavigation();
+
+  useEffect(() => {
+    const fetchTrips = async () => {
+      try {
+        const data = await getMyTrips();
+
+        // 👇 Tomamos los últimos 4 viajes más recientes
+        const recentTrips = data
+          .sort((a: any, b: any) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+          .slice(0, 4);
+
+        setTrips(recentTrips);
+      } catch (err) {
+        console.error("Error cargando historial:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTrips();
+  }, []);
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color={darkMode ? "#67E8F9" : "#2BAEEF"} />
+        <Text style={styles.loadingText}>{t("cargandoHistorial")}</Text>
+      </View>
+    );
+  }
+
+  if (trips.length === 0) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyTitle}>{t("sinRecorridos")}</Text>
+        <Text style={styles.emptySubtitle}>{t("mensajeSinRecorridos")}</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      {/* Header con gradiente */}
-      <LinearGradient colors={["#4ea0f8ff", "#21b7e0ff"]} style={styles.headerBox}>
-        <Text style={styles.header}>📜 Historial</Text>
-      </LinearGradient>
+      {/* Header simple */}
+      <View style={styles.headerBox}>
+        <Text style={styles.header}>{t("historial")}</Text>
+        <Text style={styles.subHeader}>{t("detallesViaje")}</Text>
+      </View>
 
-      {data.map((viaje, index) => (
-        <TouchableOpacity key={index} onPress={() => setSelected(index)}>
-          <ImageBackground
-            source={{ uri: "https://cdn.pixabay.com/photo/2022/06/09/17/18/road-7252981_1280.jpg" }}
-            style={styles.card}
-          >
-            <View style={styles.overlay}>
-              <Text style={styles.title}>Viaje {index + 1}</Text>
-            </View>
-          </ImageBackground>
-        </TouchableOpacity>
-      ))}
+      {/* Lista de viajes */}
+      <View style={styles.whiteBox}>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {trips.map((viaje, index) => (
+            <TouchableOpacity key={viaje.id} onPress={() => setSelected(index)}>
+              <View style={styles.card}>
+                <Text style={styles.title}>{t("viaje")} {index + 1}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
       {/* Modal elegante */}
       <Modal
@@ -49,25 +93,29 @@ export default function HistoryModel() {
         <TouchableWithoutFeedback onPress={() => setSelected(null)}>
           <View style={styles.modalBackground}>
             {selected !== null && (
-              <LinearGradient colors={["#4ea0f8ff", "#21b7e0ff"]} style={styles.specsBox}>
-                <Text style={styles.specTitle}>🚗 Detalles del viaje {selected + 1}</Text>
+              <View style={styles.specsBox}>
+                <Text style={styles.specTitle}>{t("historialModal")} {selected + 1}</Text>
                 <View style={styles.specRow}>
-                  <Text style={styles.label}>Velocidad:</Text>
-                  <Text style={styles.value}>{data[selected].speed} km/h</Text>
+                  <Text style={styles.label}>{t("distancia")}:</Text>
+                  <Text style={styles.value}>{trips[selected].distanciaKm?.toFixed(2)} km</Text>
                 </View>
                 <View style={styles.specRow}>
-                  <Text style={styles.label}>Distancia:</Text>
-                  <Text style={styles.value}>{data[selected].distancia.toFixed(2)} km</Text>
+                  <Text style={styles.label}>{t("promedio")}:</Text>
+                  <Text style={styles.value}>{trips[selected].velocidadProm?.toFixed(1)} km/h</Text>
                 </View>
                 <View style={styles.specRow}>
-                  <Text style={styles.label}>Promedio:</Text>
-                  <Text style={styles.value}>{data[selected].promedio.toFixed(2)} km/h</Text>
+                  <Text style={styles.label}>{t("maxima")}:</Text>
+                  <Text style={styles.value}>{trips[selected].velocidadMax?.toFixed(1)} km/h</Text>
                 </View>
                 <View style={styles.specRow}>
-                  <Text style={styles.label}>Máxima:</Text>
-                  <Text style={styles.value}>{data[selected].maximo} km/h</Text>
+                  <Text style={styles.label}>{t("excesos")}:</Text>
+                  <Text style={styles.value}>{trips[selected].excesosVelocidad}</Text>
                 </View>
-              </LinearGradient>
+                <View style={styles.specRow}>
+                  <Text style={styles.label}>{t("duracion")}:</Text>
+                  <Text style={styles.value}>{trips[selected].duracionMin} min</Text>
+                </View>
+              </View>
             )}
           </View>
         </TouchableWithoutFeedback>
@@ -76,77 +124,151 @@ export default function HistoryModel() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f2f2f2", alignItems: "center" },
-
-  headerBox: {
-    width: "100%",
-    paddingVertical: 20,
-    paddingTop: 50,
-    alignItems: "center",
-    marginBottom: 20,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-  },
-  header: {
-    fontSize: 26,
-    fontWeight: "bold",
-    color: "#fff",
-  },
-
-  card: {
-    width: 250,
-    height: 150,
-    marginBottom: 20,
-    borderRadius: 15,
-    marginTop: 35,
-    marginLeft:20,
-    marginRight:20,
-    overflow: "hidden",
-    elevation: 6,
-    borderWidth: 2,
-    borderColor: "#4ea0f8ff",
-  },
-  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "center", alignItems: "center" },
-  title: { fontSize: 22, color: "#fff", fontWeight: "bold" },
-
-  modalBackground: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-  specsBox: {
-    width: "85%",
-    padding: 25,
-    borderRadius: 20,
-    elevation: 12,
-    shadowColor: "#000",
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-  },
-  specTitle: {
-    fontSize: 22,
-    fontWeight: "bold",
-    marginBottom: 20,
-    textAlign: "center",
-    color: "#fff",
-  },
-  specRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
-  label: {
-    fontSize: 16,
-    color: "#f0f0f0",
-    fontWeight: "600",
-  },
-  value: {
-    fontSize: 16,
-    color: "#fff",
-    fontWeight: "bold",
-  },
-});
+function createStyles(isDarkMode: boolean) {
+  const accent = "#00bfff";
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: isDarkMode ? "#0f172a" : "#fff",
+      alignItems: "center",
+      paddingTop: 20,
+    },
+    center: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: isDarkMode ? "#0f172a" : "#fff",
+    },
+    loadingText: {
+      marginTop: 12,
+      fontSize: 16,
+      color: isDarkMode ? "#67E8F9" : accent,
+    },
+    emptyText: {
+      marginTop: 20,
+      fontSize: 16,
+      color: isDarkMode ? "#fff" : "#555",
+      fontStyle: "italic",
+    },
+    headerBox: {
+      width: "100%",
+      marginTop: 30,
+      marginBottom: 15,
+      paddingVertical: 10,
+      alignItems: "center",
+    },
+    header: {
+      color: "#2BAEEF",
+      fontSize: 25,
+      fontWeight: "bold",
+      textAlign: "center",
+      marginBottom: 8,
+    },
+    subHeader: {
+      color: isDarkMode ? "#d6d6d6" : "#6C6C6C",
+      fontSize: 16.5,
+      textAlign: "center",
+      lineHeight: 22,
+    },
+    whiteBox: {
+      width: "95%",
+      backgroundColor: isDarkMode ? "#1e293b" : "#ffffffff",
+      borderRadius: 20,
+      padding: 15,
+      marginBottom: 20,
+      shadowColor: "#000",
+      shadowOpacity: 0.08,
+      shadowRadius: 4,
+      shadowOffset: { width: 0, height: 2 },
+    },
+    card: {
+      width: "100%",
+      height: 100,
+      marginTop: 13,
+      marginBottom: 13,
+      borderRadius: 25,
+      backgroundColor: isDarkMode ? "#0f172a" : "#fff",
+      borderWidth: 2,
+      borderColor: accent,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    title: {
+      fontSize: 22,
+      color: accent,
+      fontWeight: "bold",
+    },
+    modalBackground: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.6)",
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 20,
+    },
+    specsBox: {
+      width: "85%",
+      padding: 25,
+      borderRadius: 20,
+      backgroundColor: isDarkMode ? "#1e293b" : "#fff",
+      elevation: 8,
+      shadowColor: "#000",
+      shadowOpacity: 0.2,
+      shadowRadius: 6,
+      shadowOffset: { width: 0, height: 3 },
+    },
+    specTitle: {
+      fontSize: 22,
+      fontWeight: "bold",
+      marginBottom: 20,
+      textAlign: "center",
+      color: accent,
+    },
+    specRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginBottom: 12,
+    },
+    label: {
+      fontSize: 16,
+      color: isDarkMode ? "#ccc" : "#555",
+      fontWeight: "600",
+    },
+    value: {
+      fontSize: 16,
+      color: accent,
+      fontWeight: "bold",
+    },
+    emptyContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: 24,
+      backgroundColor: isDarkMode ? "#0f172a" : "#fff",
+    },
+    emptyTitle: {
+      fontSize: 22,
+      fontWeight: "bold",
+      color: isDarkMode ? "#fff" : "#000",
+      marginBottom: 8,
+    },
+    emptySubtitle: {
+      fontSize: 16,
+      color: isDarkMode ? "#ccc" : "#555",
+      textAlign: "center",
+      lineHeight: 22,
+      marginBottom: 12,
+    },
+    emptyButton: {
+      backgroundColor: "#2BAEEF",
+      paddingVertical: 12,
+      paddingHorizontal: 24,
+      borderRadius: 25,
+      marginTop: 10,
+    },
+    emptyButtonText: {
+      color: "#fff",
+      fontSize: 16,
+      fontWeight: "bold",
+    },
+  });
+}

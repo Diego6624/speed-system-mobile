@@ -1,13 +1,14 @@
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useLanguage } from "@/context/LanguageContext";
+import { useTheme } from "@/context/ThemeContext"; // 👈 usar ThemeContext global
 import { Redirect, Tabs } from 'expo-router';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
   const { user } = useAuth();
+  const { t } = useLanguage();
+  const { darkMode } = useTheme(); // 👈 ahora viene del toggle global
 
   // 🚨 Si no hay usuario, redirige al login
   if (!user) {
@@ -17,16 +18,21 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
         tabBarButton: HapticTab,
+        tabBarActiveTintColor: darkMode ? "#67E8F9" : "#2BAEEF", // 👈 contraste en ambos modos
+        tabBarInactiveTintColor: darkMode ? "#aaa" : "#555",
+        tabBarStyle: {
+          backgroundColor: darkMode ? "#0f172a" : "#fff", // 👈 fondo dinámico
+          borderTopColor: darkMode ? "#1e293b" : "#ddd",
+        },
       }}
       initialRouteName="index"
     >
       <Tabs.Screen
         name="history"
         options={{
-          title: 'Historial',
+          title: t("historial"),
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="35.circle.fill" color={color} />
           ),
@@ -36,7 +42,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="analysis"
         options={{
-          title: 'Análisis',
+          title: t("analisis"),
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="figure.surfing.circle.fill" color={color} />
           ),
@@ -46,7 +52,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Inicio',
+          title: t("inicio"),
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="house.fill" color={color} />
           ),
@@ -56,7 +62,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Perfil',
+          title: t("perfil"),
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="03.circle.fill" color={color} />
           ),
@@ -66,7 +72,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="config"
         options={{
-          title: 'Ajustes',
+          title: t("ajustes"),
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="coloncurrencysign.circle.fill" color={color} />
           ),
