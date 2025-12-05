@@ -1,3 +1,5 @@
+import { useLanguage } from "@/context/LanguageContext";
+import { useTheme } from "@/context/ThemeContext";
 import { getWeeklyStats } from "@/services/trackingAnalysisService";
 import { getToken } from "@/utils/secureStore";
 import React, { useEffect, useState } from "react";
@@ -7,13 +9,12 @@ import {
   StyleSheet,
   Text,
   View,
-  useColorScheme,
 } from "react-native";
 
 export default function AnalysisScreen() {
-  const colorScheme = useColorScheme();
-  const isDarkMode = colorScheme === "dark";
-  const styles = createStyles(isDarkMode);
+  const { t } = useLanguage();
+  const { darkMode } = useTheme();
+  const styles = createStyles(darkMode);
 
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -25,13 +26,13 @@ export default function AnalysisScreen() {
         const data = await getWeeklyStats();
 
         if (!data) {
-          setErrorMsg("No se pudo cargar el análisis.");
+          setErrorMsg(t("errorCargarAnalisis"));
         } else {
           setStats(data);
         }
       } catch (err) {
         console.error("Error cargando análisis:", err);
-        setErrorMsg("No se pudo cargar el análisis. Intenta más tarde.");
+        setErrorMsg(t("errorAnalisisIntentaMasTarde"));
       } finally {
         setLoading(false);
       }
@@ -48,7 +49,7 @@ export default function AnalysisScreen() {
 
   return errorMsg ? (
     <View style={styles.errorContainer}>
-      <Text style={styles.errorTitle}>Ups...</Text>
+      <Text style={styles.errorTitle}>{t("ups")}</Text>
       <Text style={styles.errorMessage}>{errorMsg}</Text>
       <View
         style={styles.retryButton}
@@ -58,16 +59,14 @@ export default function AnalysisScreen() {
           setStats(null);
         }}
       >
-        <Text style={styles.retryText}>Reintentar</Text>
+        <Text style={styles.retryText}>{t("reintentar")}</Text>
       </View>
     </View>
   ) : (
     <ScrollView contentContainerStyle={styles.scrollContainer}>
       <View style={styles.textContainer}>
-        <Text style={styles.titleTxt}>Análisis de tu semana</Text>
-        <Text style={styles.subTxt}>
-          Aquí podrás ver cómo ha sido tu recorrido durante esta semana
-        </Text>
+        <Text style={styles.titleTxt}>{t("analisisSemana")}</Text>
+        <Text style={styles.subTxt}>{t("descripcionAnalisisSemana")}</Text>
       </View>
 
       <View style={styles.cardsGrid}>
@@ -76,7 +75,7 @@ export default function AnalysisScreen() {
             {loading ? (
               <ActivityIndicator
                 size="large"
-                color={isDarkMode ? "#67E8F9" : "#2BAEEF"}
+                color={darkMode ? "#67E8F9" : "#2BAEEF"}
               />
             ) : (
               <Text style={styles.circleValue}>
@@ -87,7 +86,7 @@ export default function AnalysisScreen() {
               </Text>
             )}
           </View>
-          <Text style={styles.circleLabel}>Promedio de velocidad semanal</Text>
+          <Text style={styles.circleLabel}>{t("promedioVelocidadSemanal")}</Text>
           <View style={styles.separator} />
         </View>
 
@@ -96,18 +95,18 @@ export default function AnalysisScreen() {
             {loading ? (
               <ActivityIndicator
                 size="large"
-                color={isDarkMode ? "#67E8F9" : "#2BAEEF"}
+                color={darkMode ? "#67E8F9" : "#2BAEEF"}
               />
             ) : (
               <Text style={styles.circleValue}>
-                {stats && stats.kilometrosRecorridos  !== undefined
-                  ? stats.kilometrosRecorridos .toFixed(2)
+                {stats && stats.kilometrosRecorridos !== undefined
+                  ? stats.kilometrosRecorridos.toFixed(2)
                   : 0}{" "}
                 km
               </Text>
             )}
           </View>
-          <Text style={styles.circleLabel}>Kilómetros recorridos</Text>
+          <Text style={styles.circleLabel}>{t("kilometrosRecorridos")}</Text>
           <View style={styles.separator} />
         </View>
 
@@ -116,18 +115,18 @@ export default function AnalysisScreen() {
             {loading ? (
               <ActivityIndicator
                 size="large"
-                color={isDarkMode ? "#67E8F9" : "#2BAEEF"}
+                color={darkMode ? "#67E8F9" : "#2BAEEF"}
               />
             ) : (
               <Text style={styles.circleValue}>
                 {stats && stats.excesosVelocidad !== undefined
                   ? stats.excesosVelocidad
                   : 0}{" "}
-                veces
+                {t("veces")}
               </Text>
             )}
           </View>
-          <Text style={styles.circleLabel}>Excesos de velocidad</Text>
+          <Text style={styles.circleLabel}>{t("excesosVelocidad")}</Text>
         </View>
       </View>
     </ScrollView>
@@ -140,7 +139,7 @@ function createStyles(isDarkMode: boolean) {
       paddingTop: 50,
       paddingBottom: 90,
       paddingHorizontal: 24,
-      backgroundColor: isDarkMode ? "#000" : "#fff",
+      backgroundColor: isDarkMode ? "#0f172a" : "#ffffffff",
       alignItems: "center",
     },
     textContainer: {
@@ -214,7 +213,7 @@ function createStyles(isDarkMode: boolean) {
       alignItems: "center",
       paddingHorizontal: 24,
       paddingVertical: 40,
-      backgroundColor: isDarkMode ? "#000" : "#fff",
+      backgroundColor: isDarkMode ? "#0f172a" : "#ffffffff",
     },
     errorTitle: {
       fontSize: 28,

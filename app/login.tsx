@@ -1,4 +1,6 @@
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
+import { useTheme } from "@/context/ThemeContext"; // 👈 usar ThemeContext global
 import { Link, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -7,43 +9,27 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  useColorScheme,
   View,
 } from "react-native";
 
 export default function Login() {
   const router = useRouter();
   const { loginUser, loading } = useAuth();
-  const theme = useColorScheme();
+  const { t } = useLanguage();
+  const { darkMode } = useTheme(); // 👈 ahora viene del toggle global
+
+  const styles = createStyles(darkMode);
 
   const [correo, setCorreo] = useState("");
   const [password, setPassword] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
-
-  const colors = theme === "dark"
-    ? {
-        bg: "#000",
-        text: "#fff",
-        inputBg: "#111",
-        inputBorder: "#333",
-        buttonBg: "#1e90ff",
-        link: "#1e90ff",
-      }
-    : {
-        bg: "#f9f9f9",
-        text: "#000",
-        inputBg: "#fff",
-        inputBorder: "#ddd",
-        buttonBg: "#007bff",
-        link: "#007bff",
-      };
 
   const handleLogin = async () => {
     setErrorMsg("");
     const ok = await loginUser(correo, password);
 
     if (!ok) {
-      setErrorMsg("Correo o contraseña incorrectos");
+      setErrorMsg(t("errorCredenciales"));
       return;
     }
 
@@ -51,23 +37,14 @@ export default function Login() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bg }]}>
-      <Text style={[styles.title, { color: colors.text }]}>Bienvenido 👋</Text>
-      <Text style={[styles.subtitle, { color: colors.text }]}>
-        Inicia sesión para continuar
-      </Text>
+    <View style={styles.container}>
+      <Text style={styles.title}>{t("bienvenido")}</Text>
+      <Text style={styles.subtitle}>{t("iniciaSesion")}</Text>
 
       <TextInput
-        placeholder="Correo electrónico"
-        placeholderTextColor="#888"
-        style={[
-          styles.input,
-          {
-            backgroundColor: colors.inputBg,
-            borderColor: colors.inputBorder,
-            color: colors.text,
-          },
-        ]}
+        placeholder={t("correoElectronicoLogin")}
+        placeholderTextColor={styles.placeholder.color}
+        style={styles.input}
         value={correo}
         onChangeText={setCorreo}
         autoCapitalize="none"
@@ -75,27 +52,18 @@ export default function Login() {
       />
 
       <TextInput
-        placeholder="Contraseña"
-        placeholderTextColor="#888"
-        style={[
-          styles.input,
-          {
-            backgroundColor: colors.inputBg,
-            borderColor: colors.inputBorder,
-            color: colors.text,
-          },
-        ]}
+        placeholder={t("contrasena")}
+        placeholderTextColor={styles.placeholder.color}
+        style={styles.input}
         secureTextEntry
         value={password}
         onChangeText={setPassword}
       />
 
-      {errorMsg ? (
-        <Text style={[styles.errorText]}>{errorMsg}</Text>
-      ) : null}
+      {errorMsg ? <Text style={styles.errorText}>{errorMsg}</Text> : null}
 
       <TouchableOpacity
-        style={[styles.button, { backgroundColor: colors.buttonBg }]}
+        style={styles.button}
         onPress={handleLogin}
         disabled={loading}
         activeOpacity={0.8}
@@ -103,65 +71,79 @@ export default function Login() {
         {loading ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.buttonText}>Ingresar</Text>
+          <Text style={styles.buttonText}>{t("ingresar")}</Text>
         )}
       </TouchableOpacity>
 
-      <Link
-        href="/register"
-        style={[styles.link, { color: colors.link }]}
-      >
-        ¿No tienes cuenta? Crear una
+      <Link href="/register" style={styles.link}>
+        {t("noCuenta")}
       </Link>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: "center", paddingHorizontal: 30 },
-  title: {
-    fontSize: 32,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 16,
-    textAlign: "center",
-    marginBottom: 30,
-    opacity: 0.7,
-  },
-  input: {
-    borderWidth: 1,
-    padding: 14,
-    borderRadius: 12,
-    marginBottom: 15,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  button: {
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: "center",
-    marginTop: 10,
-  },
-  buttonText: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "600",
-  },
-  link: {
-    textAlign: "center",
-    marginTop: 25,
-    fontSize: 15,
-    fontWeight: "500",
-  },
-  errorText: {
-    color: "red",
-    textAlign: "center",
-    marginBottom: 15,
-    fontSize: 14,
-  },
-});
+function createStyles(isDarkMode: boolean) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      justifyContent: "center",
+      paddingHorizontal: 30,
+      backgroundColor: isDarkMode ? "#0f172a" : "#ffffffff",
+    },
+    title: {
+      fontSize: 32,
+      fontWeight: "bold",
+      textAlign: "center",
+      marginBottom: 10,
+      color: isDarkMode ? "#fff" : "#000",
+    },
+    subtitle: {
+      fontSize: 16,
+      textAlign: "center",
+      marginBottom: 30,
+      opacity: 0.8,
+      color: isDarkMode ? "#ddd" : "#555",
+    },
+    input: {
+      borderWidth: 1,
+      padding: 14,
+      borderRadius: 12,
+      marginBottom: 15,
+      shadowColor: "#000",
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+      elevation: 2,
+      backgroundColor: isDarkMode ? "#111" : "#fff",
+      borderColor: isDarkMode ? "#333" : "#ddd",
+      color: isDarkMode ? "#fff" : "#000",
+    },
+    placeholder: {
+      color: isDarkMode ? "#888" : "#999",
+    },
+    button: {
+      paddingVertical: 16,
+      borderRadius: 12,
+      alignItems: "center",
+      marginTop: 10,
+      backgroundColor: isDarkMode ? "#1e90ff" : "#007bff",
+    },
+    buttonText: {
+      color: "#fff",
+      fontSize: 18,
+      fontWeight: "600",
+    },
+    link: {
+      textAlign: "center",
+      marginTop: 25,
+      fontSize: 15,
+      fontWeight: "500",
+      color: isDarkMode ? "#1e90ff" : "#007bff",
+    },
+    errorText: {
+      color: "#e74c3c",
+      textAlign: "center",
+      marginBottom: 15,
+      fontSize: 14,
+    },
+  });
+}
