@@ -84,9 +84,10 @@ export default function IndexScreen() {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
         Alert.alert(t("permisoDenegado"), t("activaUbicacion"));
-        return;
+        return; // 👈 salimos y no configuramos nada más
       }
 
+      // 👇 solo se ejecuta si el permiso fue concedido
       locationSubscription = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.Highest,
@@ -103,7 +104,7 @@ export default function IndexScreen() {
 
           const now = Date.now();
 
-          // Límite de velocidad: actualizar inmediatamente con backend
+          // Límite de velocidad
           if (now >= nextLimitFetchAt.current) {
             nextLimitFetchAt.current = now + 7000;
             try {
@@ -128,7 +129,7 @@ export default function IndexScreen() {
           }
 
           if (limit !== null && lastAnnouncedLimit.current !== limit && now >= nextLimitVoiceAt.current) {
-            lastAnnouncedLimit.current = limit; // 👈 ahora se actualiza aquí
+            lastAnnouncedLimit.current = limit;
             speak(`${t("vozNuevoLimite")} ${limit} ${t("kilometersPerHour")}`, 1);
             nextLimitVoiceAt.current = now + 10000;
           }
@@ -160,21 +161,28 @@ export default function IndexScreen() {
     );
   }
 
+
   return (
     <View style={styles.container}>
-      <MapView
-        style={styles.map}
-        region={{
-          latitude: location.latitude,
-          longitude: location.longitude,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
-        }}
-        showsUserLocation
-        followsUserLocation
-      >
-        <Marker coordinate={location} title={t("tuUbicacion")} />
-      </MapView>
+      {location ? (
+        <MapView
+          style={styles.map}
+          region={{
+            latitude: location.latitude,
+            longitude: location.longitude,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+          }}
+          showsUserLocation
+          followsUserLocation
+        >
+          <Marker coordinate={location} title={t("tuUbicacion")} />
+        </MapView>
+      ) : (
+        <View style={styles.container}>
+          <Text style={styles.title}>{t("cargandoUbicacion")}</Text>
+        </View>
+      )}
 
       <View style={styles.infoBox}>
         <Text style={styles.tittleIdx}>{t("velocidadActual")}</Text>
@@ -204,11 +212,11 @@ export default function IndexScreen() {
 
 function createStyles(isDarkMode: boolean) {
   return StyleSheet.create({
-    container: { 
-      flex: 1, 
-      paddingTop: 130, 
-      justifyContent: "center", 
-      alignItems: "center", 
+    container: {
+      flex: 1,
+      paddingTop: 130,
+      justifyContent: "center",
+      alignItems: "center",
       backgroundColor: isDarkMode ? "#0f172a" : "#ffffffff",
     },
     map: { width: Dimensions.get("window").width, height: Dimensions.get("window").height },
